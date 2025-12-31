@@ -7,6 +7,14 @@
     "icon": "./assets/images/icon.png",
     "scheme": "stagebookmobile",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#E5E4E2",
+      "dark": {
+        "backgroundColor": "#000000"
+      }
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
@@ -38,7 +46,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+  :root {
+    --background: #E5E4E2;
+    --foreground: #000000;
+  }
+
+  /* NativeWind usa la clase .dark para el modo oscuro */
+  .dark {
+    --background: #292929;
+    --foreground: #ffffff;
+  }
+
+@layer base {
+
+  * {
+    @apply font-mono;
+  }
+}
+
+@layer utilities {
+
+  .animate-soft-pulse {
+    animation-name: soft-pulse;
+    animation-duration: 2s;
+    animation-iteration-count: infinite;
+  }
+}
+

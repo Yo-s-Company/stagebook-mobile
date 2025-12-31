@@ -1,50 +1,36 @@
-# Welcome to your Expo app 👋
+# 🎭 StageBook Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**StageBook** es una plataforma diseñada para artistas, enfocada en ofrecer una experiencia visual minimalista y de alto rendimiento utilizando **React Native** y **Expo Router**.
 
-## Get started
+## 🚀 Tecnologías Principales
 
-1. Install dependencies
+* **Framework:** [Expo](https://expo.dev/) (SDK 51+)
+* **Navegación:** [Expo Router](https://docs.expo.dev/router/introduction/) (Basado en archivos)
+* **Estilos:** [NativeWind v4](https://www.nativewind.dev/) (Tailwind CSS para Native)
+* **Animaciones:** [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)
+* **Tipografía:** Courier / Monospace (Sistema) para una estética de terminal técnica.
 
-   ```bash
+## 📂 Estructura de Rutas
+
+El proyecto utiliza **Route Groups** para separar la lógica de acceso:
+
+- `app/index.tsx`: Pantalla de bienvenida (Splash Screen personalizado de 5s).
+- `app/(auth)/`: Módulo de autenticación (Login y Registro).
+- `app/(app)/`: Módulo principal de la aplicación protegida.
+- `app/modal.tsx`: Pantalla de presentación modal para utilidades rápidas.
+
+## 🎨 Sistema de Diseño
+
+Hemos implementado un sistema de temas basado en variables CSS en `global.css`:
+
+- **Modo Claro:** Fondo Platino (`#E5E4E2`) con acentos rojos.
+- **Modo Oscuro:** Fondo Negro puro (`#000000`) para pantallas OLED.
+- **Componentes Tematizados:** Uso de `MyText` para garantizar la fuente mono y colores dinámicos en toda la app.
+
+## 🛠️ Instalación y Uso
+
+1. Instalar dependencias:
    npm install
-   ```
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+2. Iniciar el proyecto
+   npx expo start -c
