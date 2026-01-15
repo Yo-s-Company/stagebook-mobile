@@ -46,34 +46,84 @@ export default function LoginScreen() {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
-  const handleLogin = () => {
-    if (!email) {
-      vibrateError();
-      setFieldError('email');
-      setErrorMessage('El correo es obligatorio');
-      emailShake.shake();
-      return;
-    }
-    if (!isValidEmail(email)) {
-      vibrateError();
-      setFieldError('email');
-      setErrorMessage('El correo no tiene un formato válido');
-      emailShake.shake();
-      return;
-    }
-    if (!password) {
-      vibrateError();
-      setFieldError('password');
-      setErrorMessage('La clave es necesaria');
-      passwordShake.shake();
-      return;
-    }
+//Login
+const handleLogin = async () => {
+  // 1. Validaciones iniciales
+  if (!email) {
+    vibrateError();
+    setFieldError('email');
+    setErrorMessage('El correo es obligatorio');
+    emailShake.shake();
+    return;
+  }
+  if (!isValidEmail(email)) {
+    vibrateError();
+    setFieldError('email');
+    setErrorMessage('El correo no tiene un formato válido');
+    emailShake.shake();
+    return;
+  }
+  if (!password) {
+    vibrateError();
+    setFieldError('password');
+    setErrorMessage('La clave es necesaria');
+    passwordShake.shake();
+    return;
+  }
 
-    setFieldError(null);
-    setErrorMessage('');
+  setFieldError(null);
+  setErrorMessage('');
+  setButtonText("COMPROBANDO ELENCO...");
 
-    router.replace('/(app)');
-  };
+  // 2. Llamada real a Supabase
+  const { error } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: password,
+  });
+
+  if (error) {
+    vibrateError();
+    const isInvalid = error.message.includes('Invalid login credentials');
+    setFieldError('password');
+    setErrorMessage(isInvalid ? 'Credenciales no encontradas en el reparto' : error.message);
+    
+    setButtonText("FALLO EN EL ESTRENO");
+    setTimeout(() => setButtonText("ENTRAR A ESCENA"), 2000);
+    
+    passwordShake.shake();
+    return;
+  }
+
+  // 3. Éxito
+  setButtonText("¡TELÓN ARRIBA!");
+};
+
+/*Contraseña olvidada
+const handleForgotPassword = async () => {
+  if (!email) {
+    setErrorMessage("Introduce tu correo para recuperar el guion");
+    return;
+  }
+
+  // Crear la URL de retorno: stagebookmobile://reset-password
+  const redirectUrl = AuthSession.makeRedirectUri({
+    path: 'reset-password',
+  });
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: redirectUrl,
+  });
+
+  if (error) {
+    setButtonText("ERROR DE ENVÍO");
+    setErrorMessage(error.message);
+  } else {
+    setButtonText("REVISA TU CORREO");
+  }
+};
+*/
+
+//Inicio de sesion con Google
 const handleGoogleLogin = async () => {
   try {
     const redirectUrl = AuthSession.makeRedirectUri({
@@ -104,19 +154,24 @@ const handleGoogleLogin = async () => {
 
 
 useEffect(() => {
-  const { data: listener } = supabase.auth.onAuthStateChange(
-    (_event, session) => {
-      if (session) {
+  const { data: authListener } = supabase.auth.onAuthStateChange(
+    async (event, session) => {
+      console.log("Evento de Auth:", event); 
+
+      if (event === 'PASSWORD_RECOVERY') {
+
+        router.replace('/(auth)/reset-password'); 
+      } 
+      else if (session && event === 'SIGNED_IN') {
         router.replace('/(app)');
       }
     }
   );
 
   return () => {
-    listener.subscription.unsubscribe();
+    authListener.subscription.unsubscribe();
   };
 }, []);
-
   return (
     <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView 
@@ -249,8 +304,20 @@ useEffect(() => {
                 {errorMessage}
               </MyText>
             )}
-          </View>
 
+          <TouchableOpacity 
+            onPress={() => router.push('/(auth)/forgotPasswordScreen')}
+            className="mt-2"
+            style={{ alignSelf: 'flex-end', padding: 5 }}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          >
+            <MyText className="text-zinc-500 text-[10px] uppercase tracking-widest">
+              ¿Olvidaste tu contraseña?
+            </MyText>
+          </TouchableOpacity>
+
+          </View>
+            
             {/* Botón de Entrada */}
             <TouchableOpacity 
               onPress={handleLogin}
