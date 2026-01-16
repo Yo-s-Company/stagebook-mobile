@@ -8,9 +8,10 @@ export interface ThemeColors {
 }
 
 export interface UserProfileData {
-  displayName: string;
-  artisticName: string;
-  description: string;
+  displayName: string; 
+  artisticName: string; 
+  description: string; 
+  avatar_url?: string; 
   birthPlace: string;
   age: string;
 }
@@ -26,6 +27,7 @@ export interface EditProfileModalProps {
   onClose: () => void;
   currentData: UserProfileData;
   theme: ThemeColors;
+  onSave: (updatedData: UserProfileData) => Promise<void>;
 }
 
 export interface ManageSocialModalProps {

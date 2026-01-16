@@ -1,22 +1,39 @@
+import { EditProfileModalProps, ManageSocialModalProps, UserProfileData } from '@/src/types';
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity,
   View
 } from "react-native";
-// Importamos las interfaces desde el archivo central
-import { EditProfileModalProps, ManageSocialModalProps, UserProfileData } from '@/src/types';
 
 // --- MODAL DE EDICIÓN DE PERFIL ---
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({ 
-  visible, onClose, currentData, theme 
+  visible, 
+  onClose, 
+  currentData, 
+  theme,
+  onSave // 1. Recibimos la prop aquí
 }) => {
   const [formData, setFormData] = useState<UserProfileData>(currentData);
+  const [isSaving, setIsSaving] = useState(false); // Estado para feedback visual
 
   useEffect(() => {
     if (visible) setFormData(currentData);
-  }, [visible]);
+  }, [visible, currentData]);
+
+  const handleLocalSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(formData); // 2. Llamamos a la función que viene de PerfilScreen
+      onClose();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
@@ -30,11 +47,20 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             placeholder="Nombre Artístico"
           />
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.btnCancel} onPress={onClose}>
+            <TouchableOpacity style={styles.btnCancel} onPress={onClose} disabled={isSaving}>
               <Text style={styles.btnText}>Cancelar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.btnSave, { backgroundColor: theme.primary }]} onPress={onClose}>
-              <Text style={styles.btnTextWhite}>Guardar</Text>
+            
+            <TouchableOpacity 
+              style={[styles.btnSave, { backgroundColor: theme.primary }]} 
+              onPress={handleLocalSave} // 3. Usamos la nueva función local
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.btnTextWhite}>Guardar</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>

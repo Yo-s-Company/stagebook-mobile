@@ -1,89 +1,54 @@
-import { Stack, useRouter } from 'expo-router';
-import { Image, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { supabase } from '@/src/lib/supabase';
+import { Session } from '@supabase/supabase-js';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-
 export default function RootLayout() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [initialized, setInitialized] = useState(false);
+  const segments = useSegments();
   const router = useRouter();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
+  // Escucha cambios de sesión
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setInitialized(true);
+    });
+
+    return () => authListener.subscription.unsubscribe();
+  }, []);
+
+  // Redirecciones según sesión
+  useEffect(() => {
+    if (!initialized) return;
+
+    const inAppGroup = segments[0] === '(app)';
+
+    if (session && !inAppGroup) {
+      router.replace('/(app)');
+    } else if (!session && inAppGroup) {
+      router.replace('/login');
+    }
+  }, [session, initialized, segments]);
+
+  // Loading mientras inicializa
+  if (!initialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', backgroundColor: isDark ? '#121212' : '#fff' }}>
+        <ActivityIndicator size="large" color="#f80000" />
+      </View>
+    );
+  }
+
+  // Stack principal
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#FFFFFF' }}>
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: '#f80000' },
-            headerShadowVisible: false,
-            headerTitleAlign: 'left',
-            headerShown: false, // Se mantiene false por defecto, pero el (app) lo activa
-            headerTitle: () => (
-              <View style={styles.headerTitleContainer}>
-                <Image
-                  source={require('../assets/images/LogoEditado.png')}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-                <View style={styles.brandContainer}>
-                  <Text style={styles.brandStage}>Stage</Text>
-                  <Text style={styles.brandBook}>Book</Text>
-                </View>
-              </View>
-            ),
-headerRight: () => (
-  <TouchableOpacity
-    onPress={() => {
-      console.log("Navegando al perfil...");
-      router.push('/profile/profile'); 
-    }}
-    activeOpacity={0.7}
-  >
-    <Image
-      source={{ uri: 'https://i.pravatar.cc/100' }}
-      style={styles.avatar}
-    />
-  </TouchableOpacity>
-),
-          }}
-        >
-          {/* Mostramos el header solo cuando el usuario ya entró a la App */}
-          <Stack.Screen name="(app)" options={{ headerShown: true }} />
-        </Stack>
-      </View>
+      <Stack screenOptions={{ headerShown: false }} />
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  headerTitleContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 8 
-  },
-  logo: { 
-    width: 40, 
-    height: 40 
-  },
-  brandContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center' 
-  },
-  brandStage: { 
-    fontWeight: 'bold', 
-    fontSize: 18, 
-    color: '#FFFFFF' 
-  },
-  brandBook: { 
-    fontWeight: 'bold', 
-    fontSize: 18, 
-    color: '#000000' 
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 16,
-    borderWidth: 1,
-    borderColor: '#FFFFFF'
-  }
-});

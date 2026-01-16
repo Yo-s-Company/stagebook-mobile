@@ -24,7 +24,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ userData, theme, o
       {/* SECCIÓN 1: FOTO DE PERFIL */}
       <View style={styles.imageContainer}>
         <Image 
-          source={{ uri: 'https://via.placeholder.com/150' }} 
+          source={{ uri: userData.avatar_url || 'https://via.placeholder.com/150' }} 
           style={[styles.avatar, { borderColor: theme.primary }]} 
         />
         <TouchableOpacity 
@@ -183,22 +183,24 @@ const styles = StyleSheet.create({
   },
   highlightsWrapper: { 
     width: '100%', 
-    paddingHorizontal: 15 
+    paddingHorizontal: 10,
+    marginTop: 10
   },
   highlightsStaticRow: { 
     flexDirection: 'row', 
-    justifyContent: 'space-around', 
+    justifyContent: 'center', // Los agrupamos al centro
     alignItems: 'flex-start',
-    width: '100%'
+    width: '100%',
+    gap: 12 // Espacio fijo entre ellos para que no se corten
   },
   highlightItem: { 
     alignItems: 'center', 
-    width: '23%' 
+    width: 75 // Ancho fijo en lugar de %
   },
   highlightCircle: { 
-    width: 46, 
-    height: 46, 
-    borderRadius: 23, 
+    width: 44, // Un poco más pequeños
+    height: 44, 
+    borderRadius: 22, 
     borderWidth: 1, 
     justifyContent: 'center', 
     alignItems: 'center', 
@@ -206,7 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(124, 58, 237, 0.04)' 
   },
   highlightText: { 
-    fontSize: 8.5, 
+    fontSize: 8, // Texto más pequeño para evitar saltos
     fontWeight: '700', 
     textTransform: 'uppercase', 
     letterSpacing: 0.5,
