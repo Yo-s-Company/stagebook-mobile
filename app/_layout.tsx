@@ -1,68 +1,89 @@
-import { useFonts } from 'expo-font';
 import { Stack, useRouter } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme as useNWColorScheme } from 'nativewind';
-import { useEffect } from 'react';
-import { View, useColorScheme as useRNColorScheme } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import "../global.css";
 
-// IMPORTANTE: Eliminamos la importación de 'systemColorScheme' de dist/runtime 
-// ya que eso causa el error de "Observable".
-
-SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const router = useRouter();
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
 
-  // 1. Usamos el hook de React Native para obtener el string "light" | "dark"
-  const colorSystem = useRNColorScheme();
-
-  // 2. Usamos el hook de NativeWind para controlar el tema de la app
-  const { colorScheme, setColorScheme } = useNWColorScheme();
-
-  const [fontsLoaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    'SpaceMono-Bold': require('../assets/fonts/SpaceMono-Bold.ttf'),
-  });
-
-  // 3. Sincronizar el tema al cambiar el sistema
-useEffect(() => {
-    if (colorSystem) {
-      setColorScheme(colorSystem);
-    }
-  }, [colorSystem]);
-
-  useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-      const timer = setTimeout(() => {
-        router.replace('/(auth)/login');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [fontsLoaded]);
-
-  if (!fontsLoaded) {
-    return null; 
-  }
-
-return (
-  <SafeAreaProvider>
-    <View className={`flex-1 bg-background ${colorScheme === 'dark' ? 'dark' : ''}`}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: {
-            backgroundColor: colorScheme === 'dark' ? '#000000' : '#E5E4E2',
-          },
-        }}
-      >
-        <Stack.Screen name="welcome" />
-        <Stack.Screen name="(auth)/login" />
-        <Stack.Screen name="(app)/index" />
-      </Stack>
-    </View>
-  </SafeAreaProvider>
-);
+  return (
+    <SafeAreaProvider>
+      <View style={{ flex: 1, backgroundColor: isDark ? '#121212' : '#FFFFFF' }}>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: '#f80000' },
+            headerShadowVisible: false,
+            headerTitleAlign: 'left',
+            headerShown: false, // Se mantiene false por defecto, pero el (app) lo activa
+            headerTitle: () => (
+              <View style={styles.headerTitleContainer}>
+                <Image
+                  source={require('../assets/images/LogoEditado.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+                <View style={styles.brandContainer}>
+                  <Text style={styles.brandStage}>Stage</Text>
+                  <Text style={styles.brandBook}>Book</Text>
+                </View>
+              </View>
+            ),
+headerRight: () => (
+  <TouchableOpacity
+    onPress={() => {
+      console.log("Navegando al perfil...");
+      router.push('/profile/profile'); 
+    }}
+    activeOpacity={0.7}
+  >
+    <Image
+      source={{ uri: 'https://i.pravatar.cc/100' }}
+      style={styles.avatar}
+    />
+  </TouchableOpacity>
+),
+          }}
+        >
+          {/* Mostramos el header solo cuando el usuario ya entró a la App */}
+          <Stack.Screen name="(app)" options={{ headerShown: true }} />
+        </Stack>
+      </View>
+    </SafeAreaProvider>
+  );
 }
+
+const styles = StyleSheet.create({
+  headerTitleContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8 
+  },
+  logo: { 
+    width: 40, 
+    height: 40 
+  },
+  brandContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  brandStage: { 
+    fontWeight: 'bold', 
+    fontSize: 18, 
+    color: '#FFFFFF' 
+  },
+  brandBook: { 
+    fontWeight: 'bold', 
+    fontSize: 18, 
+    color: '#000000' 
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: '#FFFFFF'
+  }
+});

@@ -3,12 +3,22 @@ import { supabase } from '@/src/lib/supabase';
 import * as AuthSession from 'expo-auth-session';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Platform,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  useColorScheme,
+  View
+} from 'react-native';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
 
   const handleSendReset = async () => {
     if (!email) {
@@ -36,15 +46,24 @@ export default function ForgotPasswordScreen() {
     }
   };
 
+  // Colores dinámicos manuales para el fondo
+  const dynamicBg = isDark ? '#121212' : '#FFFFFF';
+  const dynamicText = isDark ? '#FFFFFF' : '#000000';
+
   return (
-    <View className="flex-1 bg-background p-8 justify-center items-center">
-      <MyText className="text-2xl font-bold mb-2 tracking-tighter">RECUPERAR <MyText className='text-red-600'>GUION</MyText></MyText>
-      <MyText className="text-zinc-500 mb-8">Escribe tu correo y te enviaremos las instrucciones.</MyText>
+    <View style={[styles.container, { backgroundColor: dynamicBg }]}>
+      <MyText style={[styles.title, { color: dynamicText }]}>
+        RECUPERAR <MyText style={styles.brandRed}>GUION</MyText>
+      </MyText>
+      
+      <MyText style={styles.subtitle}>
+        Escribe tu correo y te enviaremos las instrucciones.
+      </MyText>
       
       <TextInput
         placeholder="Tu correo electrónico..."
         placeholderTextColor={'#e096c380'}
-        className="w-full border-b border-purple-600 text-purple-600 mb-8"
+        style={styles.input}
         autoCapitalize="none"
         keyboardType="email-address"
         value={email}
@@ -54,12 +73,88 @@ export default function ForgotPasswordScreen() {
       <TouchableOpacity 
         onPress={handleSendReset}
         disabled={loading}
-        className="w-full border bg-red-600 py-5 rounded-full mt-4 flex-row justify-center items-center"
+        activeOpacity={0.8}
+        style={styles.button}
       >
-        <MyText className="text-white text-center font-bold uppercase tracking-widest">
+        <MyText style={styles.buttonText}>
           {loading ? "ENVIANDO..." : "ENVIAR INSTRUCCIONES"}
         </MyText>
+      </TouchableOpacity>
+      
+      {/* Botón opcional para volver atrás si el usuario se arrepiente */}
+      <TouchableOpacity 
+        onPress={() => router.back()} 
+        style={styles.backButton}
+      >
+        <MyText style={styles.backButtonText}>VOLVER AL REPARTO</MyText>
       </TouchableOpacity>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    letterSpacing: -1,
+  },
+  brandRed: {
+    color: '#dc2626',
+  },
+  subtitle: {
+    color: '#71717a',
+    textAlign: 'center',
+    marginBottom: 32,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontSize: 14,
+  },
+  input: {
+    width: '100%',
+    borderBottomWidth: 2,
+    borderBottomColor: '#7C3AED', // Color morado de StageBook
+    color: '#7C3AED',
+    fontSize: 16,
+    paddingVertical: 12,
+    marginBottom: 32,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  button: {
+    width: '100%',
+    backgroundColor: '#dc2626', // Rojo para acciones de "emergencia" o guion
+    paddingVertical: 18,
+    borderRadius: 999,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    fontSize: 14,
+  },
+  backButton: {
+    marginTop: 24,
+    padding: 10,
+  },
+  backButtonText: {
+    color: '#71717a',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  }
+});

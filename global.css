@@ -7,7 +7,6 @@
     --foreground: #000000;
   }
 
-  /* NativeWind usa la clase .dark para el modo oscuro */
   .dark {
     --background: #292929;
     --foreground: #ffffff;

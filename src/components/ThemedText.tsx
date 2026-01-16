@@ -1,12 +1,16 @@
-// components/ThemedText.tsx
-import { Text, TextProps } from 'react-native';
+import { Text, TextProps, useColorScheme } from "react-native";
 
-export function MyText({ className, children, ...props }: TextProps) {
+export function MyText({ style, className, children, ...props }: TextProps & { className?: string }) {
+  const scheme = useColorScheme();
+
   return (
-    <Text 
-      // Aplicamos la fuente mono (Courier) y el color de tu global.css por defecto
-      className={`font-mono text-foreground ${className}`} 
+    <Text
       {...props}
+      className={`font-mono ${className || ""}`}
+      style={[
+        { color: scheme === "dark" ? "#ffffff" : "#000000" },
+        style,
+      ]}
     >
       {children}
     </Text>

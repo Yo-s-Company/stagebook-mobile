@@ -1,11 +1,12 @@
+import { MyText } from "@/src/components/ThemedText";
 import React, { useEffect, useState } from "react";
-import { View } from "react-native";
-import { MyText } from "./ThemedText"; // Tu componente Courier
+import { StyleProp, TextStyle, View } from "react-native";
 
 interface TypewriterProps {
   text: string;
   speed?: number;
   className?: string;
+  style?: StyleProp<TextStyle>;
 }
 
 export default function Typewriter({ text, speed = 100, className = "" }: TypewriterProps) {
@@ -34,7 +35,7 @@ export default function Typewriter({ text, speed = 100, className = "" }: Typewr
     // flex-row garantiza que el cursor esté a la derecha del texto
     // items-center alinea el cursor verticalmente con las letras
     <View className={`flex-row items-center flex-wrap ${className}`}>
-      <MyText>
+      <MyText className={className}>
         {displayedText}
       </MyText>
     </View>

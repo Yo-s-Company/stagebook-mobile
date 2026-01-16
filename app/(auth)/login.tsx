@@ -5,351 +5,370 @@ import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import {
+  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  View
+  useColorScheme,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Componentes propios
-import { MyText } from '@/src/components/ThemedText';
 import Typewriter from '@/src/components/Typewriter';
 import { useShake } from '@/src/components/useShake';
 import { vibrateError } from '@/src/components/vibration';
-import { Animated } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
+
 export default function LoginScreen() {
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
+  const router = useRouter();
 
   type FieldError = 'email' | 'password' | null;
-
   const [fieldError, setFieldError] = useState<FieldError>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   const emailShake = useShake();
   const passwordShake = useShake();
 
-  const router = useRouter();
-  
   const [email, setEmail] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
-  const [buttonText, setButtonText] = useState("ENTRAR A ESCENA");
-  const isValidEmail = (email: string) => {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-};
+  const [buttonText, setButtonText] = useState('ENTRAR A ESCENA');
 
-//Login
-const handleLogin = async () => {
-  // 1. Validaciones iniciales
-  if (!email) {
-    vibrateError();
-    setFieldError('email');
-    setErrorMessage('El correo es obligatorio');
-    emailShake.shake();
-    return;
-  }
-  if (!isValidEmail(email)) {
-    vibrateError();
-    setFieldError('email');
-    setErrorMessage('El correo no tiene un formato válido');
-    emailShake.shake();
-    return;
-  }
-  if (!password) {
-    vibrateError();
-    setFieldError('password');
-    setErrorMessage('La clave es necesaria');
-    passwordShake.shake();
-    return;
-  }
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  setFieldError(null);
-  setErrorMessage('');
-  setButtonText("COMPROBANDO ELENCO...");
-
-  // 2. Llamada real a Supabase
-  const { error } = await supabase.auth.signInWithPassword({
-    email: email,
-    password: password,
-  });
-
-  if (error) {
-    vibrateError();
-    const isInvalid = error.message.includes('Invalid login credentials');
-    setFieldError('password');
-    setErrorMessage(isInvalid ? 'Credenciales no encontradas en el reparto' : error.message);
-    
-    setButtonText("FALLO EN EL ESTRENO");
-    setTimeout(() => setButtonText("ENTRAR A ESCENA"), 2000);
-    
-    passwordShake.shake();
-    return;
-  }
-
-  // 3. Éxito
-  setButtonText("¡TELÓN ARRIBA!");
-};
-
-/*Contraseña olvidada
-const handleForgotPassword = async () => {
-  if (!email) {
-    setErrorMessage("Introduce tu correo para recuperar el guion");
-    return;
-  }
-
-  // Crear la URL de retorno: stagebookmobile://reset-password
-  const redirectUrl = AuthSession.makeRedirectUri({
-    path: 'reset-password',
-  });
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: redirectUrl,
-  });
-
-  if (error) {
-    setButtonText("ERROR DE ENVÍO");
-    setErrorMessage(error.message);
-  } else {
-    setButtonText("REVISA TU CORREO");
-  }
-};
-*/
-
-//Inicio de sesion con Google
-const handleGoogleLogin = async () => {
-  try {
-    const redirectUrl = AuthSession.makeRedirectUri({
-      scheme: 'stagebookmobile',
-    });
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        skipBrowserRedirect: true,
-      },
-    });
-
-    if (error || !data?.url) {
-      throw new Error(error?.message || 'No se pudo iniciar Google');
+  // Manejo de login con email y password
+  const handleLogin = async () => {
+    if (!email) {
+      vibrateError();
+      setFieldError('email');
+      setErrorMessage('El correo es obligatorio');
+      emailShake.shake();
+      return;
+    }
+    if (!isValidEmail(email)) {
+      vibrateError();
+      setFieldError('email');
+      setErrorMessage('El correo no tiene un formato válido');
+      emailShake.shake();
+      return;
+    }
+    if (!password) {
+      vibrateError();
+      setFieldError('password');
+      setErrorMessage('La clave es necesaria');
+      passwordShake.shake();
+      return;
     }
 
-    await WebBrowser.openAuthSessionAsync(
-      data.url,
-      redirectUrl
-    );
-  } catch (err) {
-    console.error('Google login error:', err);
-    vibrateError();
-  }
-};
+    setFieldError(null);
+    setErrorMessage('');
+    setButtonText('COMPROBANDO ELENCO...');
 
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-useEffect(() => {
-  const { data: authListener } = supabase.auth.onAuthStateChange(
-    async (event, session) => {
-      console.log("Evento de Auth:", event); 
+    if (error) {
+      vibrateError();
+      const isInvalid = error.message.includes('Invalid login credentials');
+      setFieldError('password');
+      setErrorMessage(isInvalid ? 'Credenciales no encontradas en el reparto' : error.message);
+      setButtonText('FALLO EN EL ESTRENO');
+      setTimeout(() => setButtonText('ENTRAR A ESCENA'), 2000);
+      passwordShake.shake();
+      return;
+    }
 
+    setButtonText('¡TELÓN ARRIBA!');
+  };
+
+  // Login con Google
+  const handleGoogleLogin = async () => {
+    try {
+      const redirectUrl = AuthSession.makeRedirectUri({ scheme: 'stagebookmobile' });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.url) {
+        await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+      } else {
+        throw new Error('No se pudo iniciar sesión con Google');
+      }
+    } catch (err) {
+      console.error('Google login error:', err);
+      vibrateError();
+    }
+  };
+
+  // Escucha cambios de sesión
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-
-        router.replace('/(auth)/reset-password'); 
-      } 
-      else if (session && event === 'SIGNED_IN') {
+        router.replace('/(auth)/reset-password');
+      } else if (session && event === 'SIGNED_IN') {
         router.replace('/(app)');
       }
-    }
-  );
+    });
 
-  return () => {
-    authListener.subscription.unsubscribe();
-  };
-}, []);
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const dynamicBg = isDark ? '#121212' : '#FFFFFF';
+  const dynamicText = isDark ? '#FFFFFF' : '#000000';
+
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        className="flex-1"
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: dynamicBg }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex1}
       >
-      <ScrollView 
-        className="flex-1"
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 32 }}
-      >          
-          {/* Sección Logo/Header */}
-          <View className="items-center mb-12">
-            <View className="w-20 h-20 mb-4">
-              <Image 
-                source={require('@/assets/images/logo.png')} 
-                className="w-full h-full"
+        <ScrollView
+          style={styles.flex1}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header */}
+          <View style={styles.headerSection}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('@/assets/images/logo.png')}
+                style={styles.logo}
                 resizeMode="contain"
               />
             </View>
-            <MyText className="text-4xl font-bold tracking-tighter">
-              STAGE<MyText className="text-red-600">BOOK</MyText>
-            </MyText>
-            <View className="h-6 mt-1">
-              <Typewriter 
-                text="Bienvenido, artista" 
-                speed={80} 
-                className="text-zinc-500 italic" 
-              />
+            <Text style={[styles.brandText, { color: dynamicText }]}>
+              STAGE<Text style={styles.brandRed}>BOOK</Text>
+            </Text>
+            <View style={styles.typewriterContainer}>
+              <Typewriter text="Bienvenido, artista" speed={80} style={styles.typewriterText} />
             </View>
           </View>
 
           {/* Formulario */}
-          <View className="space-y-8">
-            
-            {/* Campo de Email */}
-              <View className="mt-6">
-                <MyText className={`text-[10px] uppercase tracking-widest mb-1 ml-2 ${
-                  fieldError === 'email' ? 'text-red-500' : ''
-                }`}>
-                  Identificación (Email)
-                </MyText>
-
-                <Animated.View style={emailShake.animatedStyle}>
-                  <View className={`flex-row items-center border-b-2 py-2 px-2 ${
-                    fieldError === 'email'
-                      ? 'border-red-600'
-                      : emailFocused
-                      ? 'border-purple-600'
-                      : 'border-zinc-800'
-                  }`}>
-                    <TextInput
-                      value={email}
-                      onChangeText={(val) => {
-                        setEmail(val);
-                        if (fieldError === 'email') {
-                          setFieldError(null);
-                          setErrorMessage('');
-                        }
-                      }}
-                      onFocus={() => setEmailFocused(true)}
-                      onBlur={() => setEmailFocused(false)}
-                      placeholder="Escribe tu correo..."
-                      placeholderTextColor="#52525aff"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      className="flex-1 font-mono text-foreground opacity-80"
-                    />
-                  </View>
-                </Animated.View>
-
-                {fieldError === 'email' && (
-                  <MyText className="text-[10px] text-red-500 mt-1 ml-2 italic">
-                    {errorMessage}
-                  </MyText>
-                )}
-              </View>
-
-          {/* Campo de Password */}
-          <View className="mt-8">
-            <MyText
-              className={`text-[10px] uppercase tracking-widest mb-1 ml-2 ${
-                fieldError === 'password' ? 'text-red-500' : ''
-              }`}
-            >
-              Clave de acceso
-            </MyText>
-
-            <Animated.View style={passwordShake.animatedStyle}>
-              <View
-                className={`flex-row items-center border-b-2 py-2 px-2 ${
-                  fieldError === 'password'
-                    ? 'border-red-600'
-                    : passwordFocused
-                    ? 'border-purple-600'
-                    : 'border-zinc-800'
-                }`}
+          <View style={styles.formContainer}>
+            {/* Email */}
+            <View style={styles.inputGap}>
+              <Text
+                style={[
+                  styles.label,
+                  fieldError === 'email' && styles.errorText,
+                  { color: isDark ? '#a1a1aa' : '#71717a' },
+                ]}
               >
-                <TextInput
-                  value={password}
-                  onChangeText={(val) => {
-                    setPassword(val);
-                    if (fieldError === 'password') {
-                      setFieldError(null);
-                      setErrorMessage('');
-                    }
-                  }}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  secureTextEntry={!showPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor="#52525aff"
-                  className="flex-1 font-mono text-foreground tracking-widest opacity-80"
-                />
-
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  className="mx-2"
+                Identificación (Email)
+              </Text>
+              <Animated.View style={emailShake.animatedStyle}>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    fieldError === 'email'
+                      ? styles.borderRed
+                      : emailFocused
+                      ? styles.borderPurple
+                      : styles.borderDefault,
+                  ]}
                 >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color="#71717a"
+                  <TextInput
+                    value={email}
+                    onChangeText={(val) => {
+                      setEmail(val);
+                      if (fieldError === 'email') setFieldError(null);
+                    }}
+                    onFocus={() => setEmailFocused(true)}
+                    onBlur={() => setEmailFocused(false)}
+                    placeholder="Escribe tu correo..."
+                    placeholderTextColor="#52525a"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    style={styles.input}
                   />
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
+                </View>
+              </Animated.View>
+              {fieldError === 'email' && <Text style={styles.errorSubtext}>{errorMessage}</Text>}
+            </View>
 
-            {fieldError === 'password' && (
-              <MyText className="text-[10px] text-red-500 mt-1 ml-2 italic">
-                {errorMessage}
-              </MyText>
-            )}
+            {/* Password */}
+            <View style={styles.inputGap}>
+              <Text
+                style={[
+                  styles.label,
+                  fieldError === 'password' && styles.errorText,
+                  { color: isDark ? '#a1a1aa' : '#71717a' },
+                ]}
+              >
+                Clave de acceso
+              </Text>
+              <Animated.View style={passwordShake.animatedStyle}>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    fieldError === 'password'
+                      ? styles.borderRed
+                      : passwordFocused
+                      ? styles.borderPurple
+                      : styles.borderDefault,
+                  ]}
+                >
+                  <TextInput
+                    value={password}
+                    onChangeText={(val) => {
+                      setPassword(val);
+                      if (fieldError === 'password') setFieldError(null);
+                    }}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
+                    secureTextEntry={!showPassword}
+                    placeholder="••••••••"
+                    placeholderTextColor="#52525a"
+                    style={styles.input}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color="#71717a"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+              {fieldError === 'password' && (
+                <Text style={styles.errorSubtext}>{errorMessage}</Text>
+              )}
+              <TouchableOpacity
+                onPress={() => router.push('/(auth)/forgotPasswordScreen')}
+                style={styles.forgotBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.forgotText}>¿OLVIDASTE TU CONTRASEÑA?</Text>
+              </TouchableOpacity>
+            </View>
 
-          <TouchableOpacity 
-            onPress={() => router.push('/(auth)/forgotPasswordScreen')}
-            className="mt-2"
-            style={{ alignSelf: 'flex-end', padding: 5 }}
-            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-          >
-            <MyText className="text-zinc-500 text-[10px] uppercase tracking-widest">
-              ¿Olvidaste tu contraseña?
-            </MyText>
-          </TouchableOpacity>
-
-          </View>
-            
-            {/* Botón de Entrada */}
-            <TouchableOpacity 
-              onPress={handleLogin}
-              activeOpacity={0.8}
-              className={`w-full py-5 rounded-full mt-10 shadow-lg bg-[#7C3AED]`}
-            >
-              <MyText className="text-white text-center font-bold uppercase tracking-[3px] text-sm">
-                {buttonText}
-              </MyText>
+            {/* Botón login */}
+            <TouchableOpacity onPress={handleLogin} activeOpacity={0.8} style={styles.loginBtn}>
+              <Text style={styles.loginBtnText}>{buttonText}</Text>
             </TouchableOpacity>
 
-            {/* Alternativa Google */}
-            <TouchableOpacity 
-              onPress={handleGoogleLogin}
-              className="w-full border bg-blue-600 py-5 rounded-full mt-4 flex-row justify-center items-center"
-              >
-              <Ionicons name="logo-google" size={18} color="#a1a1aa" className="mr-3" />
-              <MyText className="text-white font-bold ml-2">CONTINUAR CON GOOGLE</MyText>
+            {/* Google */}
+            <TouchableOpacity onPress={handleGoogleLogin} style={styles.googleBtn}>
+              <Ionicons name="logo-google" size={18} color="#FFFFFF" />
+              <Text style={styles.googleBtnText}>CONTINUAR CON GOOGLE</Text>
             </TouchableOpacity>
           </View>
 
           {/* Footer */}
-          <View className="mt-12 items-center">
+          <View style={styles.footer}>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <MyText className="text-zinc-500 text-[10px] uppercase tracking-widest">
-                ¿No tienes cuenta? <MyText className="text-red-600 font-bold">REGÍSTRATE</MyText>
-              </MyText>
+              <Text style={styles.footerText}>
+                ¿No tienes cuenta? <Text style={styles.registerLink}>REGÍSTRATE</Text>
+              </Text>
             </TouchableOpacity>
           </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  safeArea: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 32 },
+  headerSection: { alignItems: 'center', marginBottom: 48 },
+  logoContainer: { width: 80, height: 80, marginBottom: 16 },
+  logo: { width: '100%', height: '100%' },
+  brandText: { fontSize: 36, fontWeight: 'bold', letterSpacing: -1 },
+  brandRed: { color: '#dc2626' },
+  typewriterContainer: { height: 24, marginTop: 4 },
+  typewriterText: { color: '#71717a', fontStyle: 'italic' },
+  formContainer: { width: '100%' },
+  inputGap: { marginTop: 24 },
+  label: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginBottom: 4,
+    marginLeft: 8,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  input: {
+    flex: 1,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    color: '#7C3AED',
+    opacity: 0.8,
+  },
+  borderDefault: { borderBottomColor: '#27272a' },
+  borderPurple: { borderBottomColor: '#7C3AED' },
+  borderRed: { borderBottomColor: '#dc2626' },
+  errorText: { color: '#ef4444' },
+  errorSubtext: { fontSize: 10, color: '#ef4444', marginTop: 4, marginLeft: 8, fontStyle: 'italic' },
+  eyeIcon: { paddingHorizontal: 8 },
+  forgotBtn: { alignSelf: 'flex-end', marginTop: 8 },
+  forgotText: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    color: '#71717a',
+    fontSize: 10,
+    letterSpacing: 1,
+  },
+  loginBtn: {
+    backgroundColor: '#7C3AED',
+    width: '100%',
+    paddingVertical: 20,
+    borderRadius: 999,
+    marginTop: 40,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  loginBtnText: {
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 3,
+    fontSize: 14,
+  },
+  googleBtn: {
+    backgroundColor: '#2563eb',
+    width: '100%',
+    paddingVertical: 20,
+    borderRadius: 999,
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  googleBtnText: { color: '#FFFFFF', fontWeight: 'bold', marginLeft: 12 },
+  footer: { marginTop: 48, alignItems: 'center', marginBottom: 20 },
+  footerText: {
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    color: '#71717a',
+    fontSize: 10,
+    letterSpacing: 1,
+  },
+  registerLink: { color: '#dc2626', fontWeight: 'bold' },
+});

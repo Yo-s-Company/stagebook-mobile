@@ -6,18 +6,27 @@ module.exports = {
     "./components/**/*.{js,jsx,ts,tsx}"
   ],
   presets: [require("nativewind/preset")],
-  theme: {
-    extend: {
+theme: {
+  extend: {
     colors: {
-      background: "var(--background)",
-      foreground: "var(--foreground)",
-    },
-      fontFamily: {
-        mono: ["SpaceMono"],
-        'mono-bold': ["SpaceMono-Bold"],
+      background: {
+        DEFAULT: "#E5E4E2",
+        dark: "#292929",
       },
-
+      foreground: {
+        DEFAULT: "#000000",
+        dark: "#ffffff",
+      },
+      card: {
+        DEFAULT: "#f4f4f5",
+        dark: "#18181b",
+      },
     },
+    fontFamily: {
+        mono: [Platform.OS === 'ios' ? "Courier" : "monospace"],
+      },
   },
+},
+
   plugins: [],
 };
