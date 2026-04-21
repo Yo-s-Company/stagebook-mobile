@@ -8,6 +8,7 @@ import { Header } from '@/src/components/Header';
 import { MyText } from '@/src/components/ThemedText';
 import { supabase } from '@/src/lib/supabase';
 import ActiveSummaryScreen from './index';
+import NuevoProyectoPage from './project/new';
 import SettingsScreen from './settings';
 
 const Tab = createMaterialTopTabNavigator();
@@ -30,7 +31,7 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
       <Header avatarUrl={avatarUrl} />
 
       <Tab.Navigator
-        initialRouteName="index" // Forzamos el inicio en la pantalla index
+        initialRouteName="index" 
         tabBarPosition="bottom"
         screenOptions={({ route }) => ({
           tabBarActiveTintColor: '#f80000',
@@ -61,8 +62,8 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
               case 'Elenco':
                 iconName = 'people-outline';
                 break;
-              case 'Escena':
-                iconName = 'videocam-outline';
+              case 'Proyecto':
+                iconName = 'folder-outline';
                 break;
               case 'Ajustes':
                 iconName = 'settings-outline';
@@ -88,9 +89,11 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
           options={{ title: 'Inicio' }}
         />
 
-        <Tab.Screen name="Escena">
-          {() => <Placeholder name="En Escena" />}
-        </Tab.Screen>
+        <Tab.Screen 
+          name="Proyecto"
+          component={NuevoProyectoPage}
+          
+          />
 
         <Tab.Screen
           name="Ajustes"

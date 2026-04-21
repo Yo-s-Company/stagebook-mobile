@@ -28,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({ avatarUrl }) => {
 <TouchableOpacity
   onPress={() => {
     console.log("Avatar presionado!");
-    router.push('/(app)/profile'); // Ahora apunta al Stack Screen llamado "Profile"
+    router.push('/(app)/profile');
   }}
   activeOpacity={0.7}
 >
