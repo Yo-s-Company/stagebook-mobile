@@ -8,7 +8,6 @@ import { Header } from '@/src/components/Header';
 import { MyText } from '@/src/components/ThemedText';
 import { supabase } from '@/src/lib/supabase';
 import ActiveSummaryScreen from './index';
-import NuevoProyectoPage from './project/new';
 import SettingsScreen from './settings';
 
 const Tab = createMaterialTopTabNavigator();
@@ -75,8 +74,8 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
           },
         })}
       >
-        <Tab.Screen name="Libretos">
-          {() => <Placeholder name="Mis Libretos" />}
+        <Tab.Screen name="Calendar">
+          {() => <Placeholder name="Mi agenda" />}
         </Tab.Screen>
 
         <Tab.Screen name="Elenco">
@@ -89,11 +88,9 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
           options={{ title: 'Inicio' }}
         />
 
-        <Tab.Screen 
-          name="Proyecto"
-          component={NuevoProyectoPage}
-          
-          />
+        <Tab.Screen name="Libretos">
+          {() => <Placeholder name="Libretos" />}
+        </Tab.Screen>
 
         <Tab.Screen
           name="Ajustes"

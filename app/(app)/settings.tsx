@@ -43,10 +43,11 @@ export default function SettingsScreen() {
     );
   };
 
-  const dynamicBg = isDark ? '#121212' : '#FFFFFF';
-  const dynamicCard = isDark ? '#1c1c1e' : '#f4f4f5';
-  const dynamicText = isDark ? '#FFFFFF' : '#000000';
-  const dynamicBorder = isDark ? '#2c2c2e' : '#e4e4e7';
+    const dynamicBg = isDark ? '#121212' : '#ded1b8';
+    const dynamicText = isDark ? '#ded1b8' : '#18181b';
+    const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
+    const secondaryText = isDark ? '#a1a1aa' : '#52525b';
+    const borderCol = isDark ? '#27272a' : '#e4e4e7';
 
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: dynamicBg }]}>
@@ -58,7 +59,7 @@ export default function SettingsScreen() {
         {/* SECCIÓN: APARIENCIA */}
         <View style={styles.section}>
           <MyText style={styles.sectionLabel}>Apariencia</MyText>
-          <View style={[styles.cardContainer, { backgroundColor: dynamicCard, borderColor: dynamicBorder }]}>
+          <View style={[styles.cardContainer, { backgroundColor: cardBg, borderColor: borderCol }]}>
             {themes.map((theme, index) => {
               const isActive = systemScheme === theme.id || theme.id === 'system';
               return (
@@ -70,7 +71,7 @@ export default function SettingsScreen() {
                   }}
                   style={[
                     styles.rowItem,
-                    index !== themes.length - 1 && { borderBottomWidth: 1, borderBottomColor: dynamicBorder },
+                    index !== themes.length - 1 && { borderBottomWidth: 1, borderBottomColor: borderCol },
                   ]}
                 >
                   <View style={styles.rowLeft}>
@@ -96,7 +97,7 @@ export default function SettingsScreen() {
 
           <TouchableOpacity
             onPress={() => router.push('/(auth)/onboarding')}
-            style={[styles.accountBtn, { backgroundColor: dynamicCard, borderColor: dynamicBorder }]}
+            style={[styles.accountBtn, { backgroundColor: cardBg, borderColor: borderCol }]}
           >
             <MaterialCommunityIcons name="account-edit-outline" size={22} color="#71717a" />
             <MyText style={[styles.accountBtnText, { color: dynamicText }]}>Editar Perfil Artístico</MyText>

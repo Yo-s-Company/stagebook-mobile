@@ -146,3 +146,5 @@ export const getStyles = (isDark: boolean, dynamicBg: string, dynamicText: strin
         marginBottom: 10,
     }
 });
+
+export default getStyles;

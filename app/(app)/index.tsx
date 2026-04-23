@@ -3,6 +3,7 @@ import Typewriter from "@/src/components/Typewriter";
 import { supabase } from "@/src/lib/supabase";
 import { Company, CompanyNotification, ProjectSummary } from '@/src/types';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -33,6 +34,7 @@ const MOCK_EVENTS = [
 ];
 
 export default function ActiveSummaryScreen() {
+  const navigation = useNavigation<any>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
@@ -128,24 +130,6 @@ useEffect(() => {
     setShowActions(!showActions);
   };
 
-  const actionItems = [
-    { 
-      label: 'NUEVO EVENTO', 
-      icon: <CalendarDaysIcon color="#dc2626" />, 
-      route: '/(app)/event/new' as any 
-    },
-    { 
-      label: 'NUEVA COMPAÑÍA', 
-      icon: <BuildingOfficeIcon color="#dc2626" />, 
-      route: '/(app)/company/new' as any 
-    },
-    { 
-      label: 'NUEVO PROYECTO', 
-      icon: <QueueListIcon color="#dc2626" />, 
-      route: '/(app)/project/new'
-    },
-  ];
-
   const actionStyle = {
     transform: [
       { scale: animation },
@@ -224,30 +208,59 @@ useEffect(() => {
         </View>
       </ScrollView>
 
-      {/* MODAL DE ACCIONES */}
-      <Modal visible={showActions} transparent animationType="fade">
-        <TouchableWithoutFeedback onPress={toggleMenu}>
-          <View style={styles.modalOverlay}>
-            <View style={[styles.actionsContainer, { bottom: insets.bottom + 90 }]}>
-              {actionItems.map((item, index) => (
-                <Animated.View key={index} style={[styles.actionItem, actionStyle]}>
-                  <Text style={styles.actionLabel}>{item.label}</Text>
-                  <TouchableOpacity 
-                    style={styles.iconCircle} 
-                    onPress={() => {
-                      console.log("Navegando a: ", item.route);
-                      toggleMenu();
-                      router.push(item.route);
-                    }}
-                  >
-                    {item.icon}
-                  </TouchableOpacity>
-                </Animated.View>
-              ))}
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+{/* MODAL DE ACCIONES CON BOTONES EXPLÍCITOS */}
+<Modal visible={showActions} transparent animationType="fade">
+  <TouchableWithoutFeedback onPress={toggleMenu}>
+    <View style={styles.modalOverlay}>
+      <View style={[styles.actionsContainer, { bottom: insets.bottom + 90 }]}>
+        
+        {/* OPCIÓN: NUEVO PROYECTO */}
+        <Animated.View style={[styles.actionItem, actionStyle]}>
+          <Text style={styles.actionLabel}>NUEVO PROYECTO</Text>
+          <TouchableOpacity 
+            style={[styles.iconCircle, { backgroundColor: isDark ? '#1e1e1e' : '#fff' }]} 
+            onPress={() => {
+              toggleMenu();
+              // Usamos la ruta directa sin el grupo (app)
+              router.push('/new-project');
+            }}
+          >
+            <QueueListIcon color="#dc2626" size={20} />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* OPCIÓN: NUEVA COMPAÑÍA */}
+        <Animated.View style={[styles.actionItem, actionStyle]}>
+          <Text style={styles.actionLabel}>NUEVA COMPAÑÍA</Text>
+          <TouchableOpacity 
+            style={[styles.iconCircle, { backgroundColor: isDark ? '#1e1e1e' : '#fff' }]} 
+            onPress={() => {
+              toggleMenu();
+              router.push('/company/new' as any);
+            }}
+          >
+            <BuildingOfficeIcon color="#dc2626" size={20} />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* OPCIÓN: NUEVO EVENTO */}
+        <Animated.View style={[styles.actionItem, actionStyle]}>
+          <Text style={styles.actionLabel}>NUEVO EVENTO</Text>
+          <TouchableOpacity 
+            style={[styles.iconCircle, { backgroundColor: isDark ? '#1e1e1e' : '#fff' }]} 
+            onPress={() => {
+              toggleMenu();
+              router.push('/event/new' as any);
+            }}
+          >
+            <CalendarDaysIcon color="#dc2626" size={20} />
+          </TouchableOpacity>
+        </Animated.View>
+
+      </View>
+    </View>
+  </TouchableWithoutFeedback>
+</Modal>
 
       {/* BOTÓN FLOTANTE PRINCIPAL */}
       <TouchableOpacity 

@@ -12,7 +12,7 @@ export const Header: React.FC<HeaderProps> = ({ avatarUrl }) => {
   const router = useRouter();
 
   return (
-    <View style={[styles.headerContainer, { paddingTop: insets.top, height: 60 + insets.top, backgroundColor: '#f80000' }]}>
+    <View style={[styles.headerContainer, { paddingTop: insets.top, height: 60 + insets.top, backgroundColor: '#9d0000' }]}>
       <View style={styles.headerTitleContainer}>
         <Image 
           source={require('../../assets/images/LogoEditado.png')} 
@@ -28,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({ avatarUrl }) => {
 <TouchableOpacity
   onPress={() => {
     console.log("Avatar presionado!");
-    router.push('/(app)/profile');
+    router.push('/perfilScreen');
   }}
   activeOpacity={0.7}
 >

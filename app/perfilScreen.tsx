@@ -4,9 +4,9 @@ import { UserProfileData } from "@/src/types";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ProfileHeader } from "./ProfileHeader";
-import { EditProfileModal } from "./ProfileModal";
-import { ProfileTabs } from "./ProfileTabs";
+import { ProfileHeader } from "./(app)/profile/ProfileHeader";
+import { EditProfileModal } from "./(app)/profile/ProfileModal";
+import { ProfileTabs } from "./(app)/profile/ProfileTabs";
 
 export default function PerfilScreen() {
   const isDark = useColorScheme() === 'dark';

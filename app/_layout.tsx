@@ -28,10 +28,12 @@ export default function RootLayout() {
     if (!initialized) return;
 
     const inAppGroup = segments[0] === '(app)';
+    const isNewProject = segments[0] === 'new-project';
+    const isPerfilScreen = segments[0] === 'perfilScreen';
 
-    if (session && !inAppGroup) {
+    if (session && !inAppGroup &&!isNewProject && !isPerfilScreen) {
       router.replace('/(app)');
-    } else if (!session && inAppGroup) {
+    } else if (!session && (inAppGroup || isNewProject)) {
       router.replace('/login');
     }
   }, [session, initialized, segments]);
@@ -45,10 +47,25 @@ export default function RootLayout() {
     );
   }
 
-  // Stack principal
+  // Renderizado del Stack Principal
   return (
     <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* 1. El grupo principal con el Tab Navigator interno */}
+        <Stack.Screen name="(app)" options={{ headerShown: false }} />
+        
+        {/* 2. La pantalla independiente (fuera de las pestañas) */}
+        <Stack.Screen 
+          name="new-project"
+          options={{ 
+            presentation: 'modal', 
+            headerShown: false,
+          }} 
+        />
+        
+        {/* 3. Flujo de autenticación */}
+        <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+      </Stack>
     </SafeAreaProvider>
   );
 }

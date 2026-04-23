@@ -1,8 +1,9 @@
 import { CharacterModal } from "@/src/components/CharacterModal";
-import { ProductionModal } from "@/src/components/ProductionModa";
+import { ProductionModal } from "@/src/components/ProductionModal";
 import Typewriter from "@/src/components/Typewriter";
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -11,12 +12,15 @@ import {
     TextInput,
     TouchableOpacity,
     useColorScheme,
-    View
+    View,
 } from 'react-native';
-import { getStyles } from "./newStyles";
-import { useProjectForm } from './useProjectForm';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getStyles } from "./(app)/project/newStyles";
+import { useProjectForm } from './(app)/project/useProjectForm';
 
 export default function NuevoProyectoPage() {
+    const router = useRouter();
+    const insets = useSafeAreaInsets();
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
     const [showPicker, setShowPicker] = useState({ show: false, mode: 'start' as 'start' | 'end' });
@@ -26,7 +30,9 @@ export default function NuevoProyectoPage() {
         nuevoChar, setNuevoChar, 
         nuevoMiembro, setNuevoMiembro,
         agregarPersonajeALista, eliminarPersonaje,
-        toggleDia, agregarMiembroEquipo, resetForm 
+        toggleDia, agregarMiembroEquipo, resetForm, pickDocument,
+        setBusquedaActores,busquedaActores, buscando, buscarActorEnBaseDeDatos,
+        guardarProyectoEnBaseDeDatos
     } = useProjectForm();
 
 
@@ -44,7 +50,6 @@ export default function NuevoProyectoPage() {
         }
     }
 };
-
     //Modals
     const[showModalProduccion, setShowModalProduccion]=useState(false);
     const [showModalPersonaje, setShowModalPersonaje] = useState(false);
@@ -117,6 +122,7 @@ const cancelarProduccion = () => {
                         image_ref_url: '',
                         video_ref_url: '',
                         actor_dessigned: '',
+                        assigned_profile_id: ''
                     });
                     
                     // Volver al Acto 1 (Identidad)
@@ -128,11 +134,11 @@ const cancelarProduccion = () => {
 };
 
     return (
-        <View style={{ flex: 1, backgroundColor: dynamicBg }}>
+        <View style={{ flex: 1, backgroundColor: dynamicBg, paddingTop: insets.top }}>
             <ScrollView contentContainerStyle={[styles.scrollContainer, { paddingTop: 24 }]}>
                 
                 <View style={styles.headerContainer}>
-                    <Typewriter text="NUEVO PROYECTO" speed={80} style={[styles.headerTitle, { color: dynamicText }]} />
+                    <Typewriter text="SE LEVANTA EL TELÓN" speed={80} style={[styles.headerTitle, { color: dynamicText }]} />
                 </View>
 
                 {/* SECCIÓN 1: IDENTIDAD */}
@@ -146,10 +152,18 @@ const cancelarProduccion = () => {
                             value={formData.title}
                             onChangeText={(text) => setFormData({ ...formData, title: text})}
                         />
-                        <TouchableOpacity style={styles.uploadBtn}>
-                            <Ionicons name="cloud-upload" size={18} color="#fff" />
+                        <TouchableOpacity 
+                            style={[styles.uploadBtn, formData.script_url && { backgroundColor: '#16a34a' }]} 
+                            onPress={pickDocument}
+                        >
+                            <Ionicons 
+                                name={formData.script_url ? "checkmark-circle" : "cloud-upload"} 
+                                size={18} 
+                                color="#fff" 
+                            />
                             <Text style={styles.uploadBtnText}>
-                                {formData.script_url ? "Guión cargado" : "Subir libreto (PDF)"}
+                                {/* Cambiamos el mensaje para incluir Word */}
+                                {formData.script_url ? formData.script_url : "Subir libreto (PDF, Word)"}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -305,13 +319,26 @@ const cancelarProduccion = () => {
                 <View style={styles.buttonContainer}>
                     {/* Botón Principal */}
                     <TouchableOpacity 
-                        style={[styles.primaryBtn, { backgroundColor: '#dc2626' }]} 
-                        activeOpacity={0.8}
-                        onPress={() => console.log("Lanzando a Supabase...", formData)}
+                        style={[styles.primaryBtn, { backgroundColor: formData.theme_color }]} 
+                        onPress={async () => {
+                            // Validación básica
+                            if (!formData.title.trim()) {
+                                return Alert.alert("Faltan datos", "El nombre de la obra es obligatorio.");
+                            }
+
+                            Alert.alert("Lanzando Proyecto", "Subiendo los datos a la nube...");
+                            
+                            const resultado = await guardarProyectoEnBaseDeDatos();
+                            
+                            if (resultado.success) {
+                                Alert.alert("¡Arriba el telón!", "Proyecto creado exitosamente.");
+                                resetForm();
+                                router.replace('/');
+                            }
+                        }}
                     >
                         <Text style={styles.primaryBtnText}>LANZAR PROYECTO</Text>
                     </TouchableOpacity>
-
                     {/* Botón de Reinicio / Cancelar */}
                     <TouchableOpacity 
                         style={[styles.secondaryBtn, { 
@@ -326,7 +353,7 @@ const cancelarProduccion = () => {
                     >
                         <Ionicons name="trash-bin-outline" size={18} color="#dc2626" />
                         <Text style={[styles.secondaryBtnText, { color: '#dc2626', fontWeight: 'bold' }]}>
-                            CANCELAR PRODUCCIÓN
+                            REINICIAR PRODUCCIÓN
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -339,6 +366,10 @@ const cancelarProduccion = () => {
             onSave={agregarPersonajeALista}
             nuevoChar={nuevoChar}
             setNuevoChar={setNuevoChar}
+            busquedaActores={busquedaActores}
+            buscando={buscando}
+            onBuscarActor={buscarActorEnBaseDeDatos}
+            setBusquedaActores={setBusquedaActores}
             theme={{ cardBg, dynamicText, secondaryText, borderCol }}
         />
 
@@ -348,6 +379,10 @@ const cancelarProduccion = () => {
             onSave={agregarMiembroEquipo}
             nuevoMiembro={nuevoMiembro}
             setNuevoMiembro={setNuevoMiembro}
+            busquedaActores={busquedaActores}
+            buscando={buscando}
+            onBuscarActor={buscarActorEnBaseDeDatos}
+            setBusquedaActores={setBusquedaActores}
             theme={{ cardBg, dynamicText, secondaryText, borderCol }}
         />
         </View>

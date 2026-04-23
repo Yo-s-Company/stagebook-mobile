@@ -1,6 +1,107 @@
+import { supabase } from '@/src/lib/supabase';
+import * as DocumentPicker from 'expo-document-picker';
 import { useState } from 'react';
+import { Alert } from 'react-native';
+
+interface UserProfile {
+    id: string;
+    username: string;
+    full_name: string | null;
+    avatar_url: string | null;
+}
 
 export const useProjectForm = () => {
+
+const guardarProyectoEnBaseDeDatos = async () => {
+    try {
+        //Obtener usuario
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            Alert.alert("Error de sesión", "Debes estar logueado para crear proyectos.");
+            return { success: false };
+        }
+        // 1. Insertar el Proyecto
+        const { data: proyectoCreado, error: errorProyecto } = await supabase
+            .from('projects')
+            .insert([
+                {
+                    title: formData.title,
+                    description: formData.description,
+                    script_url: formData.script_url, // Nombre del archivo o URL
+                    start_date: formData.start_date,
+                    end_date: formData.end_date,
+                    dias_funcion: formData.dias_funcion,
+                    theme_color: formData.theme_color,
+                    status: 'Activo',
+                    founder_id: user.id
+                }
+            ])
+            .select()
+            .single();
+
+        if (errorProyecto) throw errorProyecto;
+
+        const projectId = proyectoCreado.id;
+
+        // 2. Insertar Personajes vinculados
+        if (formData.personajes.length > 0) {
+            const personajesData = formData.personajes.map(p => ({
+                project_id: projectId,
+                character_name: p.character_name,
+                description: p.description,
+                image_ref_url: p.image_ref_url,
+                video_ref_url: p.video_ref_url,
+                assigned_profile_id: p.assigned_profile_id
+            }));
+            const { error: errorChars } = await supabase.from('project_characters').insert(personajesData);
+            if (errorChars) throw errorChars;
+        }
+
+        // 3. Insertar Equipo de Producción vinculado
+        if (formData.equipo_produccion.length > 0) {
+            const equipoData = formData.equipo_produccion.map(e => ({
+                project_id: projectId,
+                username: e.username,
+                role: e.role
+            }));
+            const { error: errorEquipo } = await supabase.from('production_team').insert(equipoData);
+            if (errorEquipo) throw errorEquipo;
+        }
+
+        return { success: true };
+
+    } catch (error: any) {
+        console.error("Error al lanzar proyecto:", error);
+        Alert.alert("Error de Conexión", error.message);
+        return { success: false };
+    }
+};
+
+    //busqueda de usuarios
+    const [busquedaActores, setBusquedaActores] = useState<UserProfile[]>([]);
+    const [buscando, setBuscando] = useState(false);
+
+    const buscarActorEnBaseDeDatos = async (texto: string) => {
+        if (texto.length < 2) {
+            setBusquedaActores([]);
+            return;
+        }
+
+        setBuscando(true);
+        // Buscar en la tabla de perfiles
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, username, full_name, avatar_url')
+            .ilike('username', `%${texto}%`)
+            .limit(5);
+
+        if (!error && data) {
+            setBusquedaActores(data as UserProfile[]);
+        }
+        setBuscando(false);
+    };
+    
     // 1. Estados del Formulario
     const [formData, setFormData] = useState({
         title: '',
@@ -21,6 +122,7 @@ export const useProjectForm = () => {
         image_ref_url: '',
         video_ref_url: '',
         actor_dessigned: '',
+        assigned_profile_id: null as string | null,
     });
 
     const [nuevoMiembro, setNuevoMiembro] = useState({
@@ -41,6 +143,7 @@ export const useProjectForm = () => {
             image_ref_url: '',
             video_ref_url: '',
             actor_dessigned: '',
+            assigned_profile_id: null as string | null,
         });
         return true;
     };
@@ -88,6 +191,29 @@ export const useProjectForm = () => {
         });
     };
 
+    //Logica para la subida de archivos
+    const pickDocument = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: [
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                ],
+                copyToCacheDirectory: true
+            });
+            if (!result.canceled){
+                setFormData (prev => ({
+                    ...prev,
+                    script_url: result.assets[0].name
+                }));
+                return result.assets[0];
+            }
+        } catch (err) {
+            console.error("Error al selecionar documento:", err);
+        }
+    };
+
     return {
         formData,
         setFormData,
@@ -99,6 +225,14 @@ export const useProjectForm = () => {
         eliminarPersonaje,
         toggleDia,
         agregarMiembroEquipo,
-        resetForm
+        resetForm,
+        pickDocument,
+        busquedaActores,
+        buscando,
+        buscarActorEnBaseDeDatos,
+        setBusquedaActores,
+        guardarProyectoEnBaseDeDatos,
     };
 };
+
+export default useProjectForm;
