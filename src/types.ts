@@ -50,6 +50,72 @@ export interface ProfileHeaderProps {
   userData: UserProfileData;
   theme: ThemeColors;
   onEdit: () => void;
-  // Añadimos esto si quieres pasar los highlights por props en el futuro
   highlights?: HighlightItem[]; 
+}
+
+//interfaces de Proyectos
+export interface Project {
+  id: string;
+  created_at: string;
+  founder_id: string;
+  title: string;
+  description: string | null;
+  script_url: string | null;
+  start_date: string | null;
+  theme_color: string | null; 
+  status: string;
+}
+
+// Este es el modelo para mostrar en la lista (Dashboard)
+export interface ProjectSummary {
+  id: string;
+  title: string;
+  charactersCount: number;
+  status: string;
+  theme_color?: string |null;
+}
+
+//interfaces de compañias
+export interface Company {
+  id: string;  
+  name: string; 
+  founder_id?: string | null; 
+  created_at?: string;  
+  image_url?: string | null; 
+  theme_color?: string | null;
+}
+
+// 2. Los Miembros de la compañía
+export interface CompanyMember {
+  id: string;  
+  company_id: string | null; 
+  profile_id: string | null; 
+  role: string | null;
+  joined_at: string; 
+  is_active: boolean | null;
+  left_at: string | null;
+}
+
+// 3. Las Invitaciones pendientes
+export interface CompanyInvitation {
+  id: string;
+  company_id: string | null;
+  inviter_id: string | null;
+  email: string;
+  role: string | null;
+  token: string | null;
+  status: string | null; 
+  created_at: string;
+}
+export interface CompanyNotification {
+  id: string;
+  company_id: string;
+  inviter_id: string;
+  email: string;
+  role: string;
+  status: string;
+  created_at: string;
+  companies: {
+    name: string;
+  };
 }

@@ -1,4 +1,5 @@
 import { MyText } from "@/src/components/ThemedText";
+import { useIsFocused } from "@react-navigation/native"; // Importante: detecta si la pantalla está activa
 import React, { useEffect, useState } from "react";
 import { StyleProp, TextStyle, View } from "react-native";
 
@@ -9,14 +10,19 @@ interface TypewriterProps {
   style?: StyleProp<TextStyle>;
 }
 
-export default function Typewriter({ text, speed = 100, className = "" }: TypewriterProps) {
+export default function Typewriter({ text, speed = 100, className = "", style }: TypewriterProps) {
   const [displayedText, setDisplayedText] = useState("");
-  const [isFinished, setIsFinished] = useState(false);
+  const isFocused = useIsFocused(); // Hook que devuelve true si la pantalla está visible
 
   useEffect(() => {
+    // Si la pantalla no está enfocada, limpiamos el texto y no hacemos nada
+    if (!isFocused) {
+      setDisplayedText("");
+      return;
+    }
+
     let i = 0;
-    setDisplayedText("");
-    setIsFinished(false);
+    setDisplayedText(""); // Reiniciamos el texto al ganar el foco
 
     const timer = setInterval(() => {
       setDisplayedText(text.slice(0, i + 1));
@@ -24,18 +30,15 @@ export default function Typewriter({ text, speed = 100, className = "" }: Typewr
 
       if (i >= text.length) {
         clearInterval(timer);
-        setIsFinished(true);
       }
     }, speed);
 
     return () => clearInterval(timer);
-  }, [text, speed]);
+  }, [text, speed, isFocused]); // Se reinicia si cambia el texto, la velocidad o si la pantalla vuelve a enfocarse
 
   return (
-    // flex-row garantiza que el cursor esté a la derecha del texto
-    // items-center alinea el cursor verticalmente con las letras
     <View className={`flex-row items-center flex-wrap ${className}`}>
-      <MyText className={className}>
+      <MyText style={style} className={className}>
         {displayedText}
       </MyText>
     </View>

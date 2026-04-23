@@ -1,19 +1,22 @@
 import { MyText } from "@/src/components/ThemedText";
 import Typewriter from "@/src/components/Typewriter";
+import { supabase } from "@/src/lib/supabase";
+import { Company, CompanyNotification, ProjectSummary } from '@/src/types';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from 'expo-router';
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
   useColorScheme,
-  View,
+  View
 } from "react-native";
 import {
   BuildingOfficeIcon,
@@ -23,10 +26,6 @@ import {
 } from "react-native-heroicons/outline";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const MOCK_PROJECTS = [
-  { id: "1", title: "Hamlet", charactersCount: 12, status: "Activo" },
-  { id: "2", title: "La Casa de Bernarda Alba", charactersCount: 8, status: "Activo" },
-];
 
 const MOCK_EVENTS = [
   { id: "1", projectTitle: "Hamlet", type: "Ensayo", date: "Hoy · 7:00 PM" },
@@ -39,8 +38,85 @@ export default function ActiveSummaryScreen() {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
+  const [loading, setLoading] = useState (true);
+  const [refreshing, setRefreshing] = useState (false);
+  //Compañias Veremos si lo ponemos en esta pantalla
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [notifications, setNotifications] = useState<CompanyNotification[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+
   const [showActions, setShowActions] = useState(false);
   const animation = useRef(new Animated.Value(0)).current; 
+
+  const fetchData = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 1. Proyectos: 
+    const { data: projectsData } = await supabase
+      .from('projects')
+      .select('id, title, status, theme_color, project_characters(id)')
+      .eq('founder_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (projectsData) {
+      const transformedProjects: ProjectSummary[] = projectsData.map(p => ({
+        id: p.id,
+        title: p.title,
+        charactersCount: Array.isArray(p.project_characters) ? p.project_characters.length : 0,
+        status: p.status || 'Activo',
+        theme_color: p.theme_color
+      }));
+      setProjects(transformedProjects);
+    }
+
+    // 2. Compañías: Extraemos solo la info de la empresa
+    const { data: members } = await supabase
+      .from('company_members')
+      .select('companies(id, name, image_url)')
+      .eq('profile_id', user.id)
+      .eq('is_active', true);
+
+    if (members) {
+      const userCompanies = members 
+        .map(m => {
+          const companyData = Array.isArray(m.companies) ? m.companies[0] : m.companies;
+          return companyData;
+        })
+        .filter(Boolean) as Company[]; 
+      
+      setCompanies(userCompanies);
+    }
+
+    // 3. Invitaciones:
+    const { data: invs } = await supabase
+      .from('company_invitations')
+      .select('*, companies(name)')
+      .eq('email', user.email)
+      .eq('status', 'pendiente');
+
+    if (invs) {
+      setNotifications(invs as CompanyNotification[]);
+    }
+
+  } catch (e) {
+    console.error("Error en fetchData:", e);
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
+
+// función para reffresh con pull
+const onRefresh = useCallback(() => {
+  setRefreshing(true);
+  fetchData();
+}, []);
+
+useEffect(() => {
+    fetchData();
+  }, []);
 
   const toggleMenu = () => {
     const toValue = showActions ? 0 : 1;
@@ -91,6 +167,9 @@ export default function ActiveSummaryScreen() {
       <ScrollView 
         style={styles.container} 
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#dc2626" />
+        }
       >
         <View style={styles.headerContainer}>
           <Typewriter 
@@ -103,11 +182,13 @@ export default function ActiveSummaryScreen() {
         {/* PROYECTOS ACTIVOS */}
         <View style={styles.sectionDivider}>
           <MyText style={styles.sectionTitleGreen}>
-            🟢 Proyectos en Curso ({MOCK_PROJECTS.length})
+            🟢 Proyectos en Curso ({projects.length})
           </MyText>
 
-          {MOCK_PROJECTS.map((item) => (
-            <View key={item.id} style={[styles.projectCard, { backgroundColor: isDark ? '#1e1e1e' : '#FFFFFF' }]}>
+          
+
+          {projects.map((item) => (
+            <View key={item.id} style={[styles.projectCard, { backgroundColor: isDark ? '#1e1e1e' : '#FFFFFF', borderLeftColor: item.theme_color ||'#7C3AED' }]}>
               <Text style={[styles.cardTitle, { color: dynamicText }]}>{item.title}</Text>
               <Text style={styles.cardSubtitle}>
                 {item.charactersCount} Personajes · {item.status}
@@ -200,7 +281,6 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#7C3AED',
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
