@@ -60,6 +60,7 @@ export default function ActiveSummaryScreen() {
       .from('projects')
       .select('id, title, status, theme_color, project_characters(id)')
       .eq('founder_id', user.id)
+      .eq('status', 'Activo')
       .order('created_at', { ascending: false });
 
     if (projectsData) {

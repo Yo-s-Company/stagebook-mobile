@@ -1,4 +1,5 @@
 import { CharacterModal } from "@/src/components/CharacterModal";
+import { LoadingOverlay } from "@/src/components/LoadingOverlay";
 import { ProductionModal } from "@/src/components/ProductionModal";
 import Typewriter from "@/src/components/Typewriter";
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,8 @@ export default function NuevoProyectoPage() {
     const scheme = useColorScheme();
     const isDark = scheme === 'dark';
     const [showPicker, setShowPicker] = useState({ show: false, mode: 'start' as 'start' | 'end' });
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     const { 
         formData, setFormData, 
@@ -37,19 +40,67 @@ export default function NuevoProyectoPage() {
 
 
     //Fecha
-    const onDateChange = (event: any, selectedDate?: Date) => {
+const onDateChange = (event: any, selectedDate?: Date) => {
     setShowPicker({ ...showPicker, show: false });
 
     if (selectedDate) {
-        const formattedDate = selectedDate.toISOString().split('T')[0];
-        
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+
         if (showPicker.mode === 'start') {
+            // 🛑 VALIDACIÓN: Estreno no puede ser posterior a clausura
+            if (formData.end_date && formattedDate > formData.end_date) {
+                Alert.alert(
+                    "Error de Cronología",
+                    "El estreno no puede ser después de la clausura. Se ha reiniciado la selección."
+                );
+                // Reiniciamos solo la fecha de inicio
+                setFormData({ ...formData, start_date: '' });
+                return;
+            }
             setFormData({ ...formData, start_date: formattedDate });
         } else {
-            setFormData({ ...formData, end_date: formattedDate });
+            // 🛑 VALIDACIÓN: Clausura no puede ser anterior al estreno
+            if (formattedDate < formData.start_date) {
+                Alert.alert(
+                    "Error de Cronología",
+                    "La clausura no puede ser antes del estreno. Se ha reiniciado la selección."
+                );
+                // Reiniciamos solo la fecha de fin
+                setFormData({ ...formData, end_date: '' });
+                return;
+            }
+
+            // 🚀 LÓGICA DE ESTADO (Solo si la cronología es válida)
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            const fechaSeleccionada = new Date(selectedDate);
+            fechaSeleccionada.setHours(0, 0, 0, 0);
+
+            if (fechaSeleccionada < hoy) {
+                Alert.alert(
+                    "🎬 Nota de Producción", 
+                    "Como la fecha de clausura ya pasó, el proyecto se marcará como Inactivo."
+                );
+                setFormData({ 
+                    ...formData, 
+                    end_date: formattedDate, 
+                    status: 'Inactivo'
+                });
+            } else {
+                setFormData({ 
+                    ...formData, 
+                    end_date: formattedDate, 
+                    status: 'Activo'
+                });
+            }
         }
     }
 };
+
     //Modals
     const[showModalProduccion, setShowModalProduccion]=useState(false);
     const [showModalPersonaje, setShowModalPersonaje] = useState(false);
@@ -262,7 +313,10 @@ const cancelarProduccion = () => {
                         </View>
                     </TouchableOpacity>
                 </View>
-
+                
+                    <Text style={{ color: '#9e0000', fontSize: 12, marginTop: 5 }}>
+                        Estado del proyecto: {formData.status}
+                    </Text>
                 {/* El Picker (Se renderiza solo cuando show es true) */}
                 {showPicker.show && (
                     <DateTimePicker
@@ -321,19 +375,48 @@ const cancelarProduccion = () => {
                     <TouchableOpacity 
                         style={[styles.primaryBtn, { backgroundColor: formData.theme_color }]} 
                         onPress={async () => {
-                            // Validación básica
-                            if (!formData.title.trim()) {
-                                return Alert.alert("Faltan datos", "El nombre de la obra es obligatorio.");
-                            }
+                            setIsSaving(true);
+                            if (!formData.title.trim()) return Alert.alert("Faltan datos", "El nombre es obligatorio.");
 
-                            Alert.alert("Lanzando Proyecto", "Subiendo los datos a la nube...");
+                            // 1. Cálculo de seguridad (Ingeniería de datos)
+                            const hoy = new Date();
+                            hoy.setHours(0, 0, 0, 0);
                             
-                            const resultado = await guardarProyectoEnBaseDeDatos();
+                            // Creamos la fecha de clausura forzando que sea local (evita error de un día menos)
+                            const fechaClausura = new Date(formData.end_date + 'T00:00:00'); 
+                            
+                            const estadoReal = fechaClausura < hoy ? 'Inactivo' : 'Activo';
+
+                            // 2. Creamos el paquete de datos final
+                            const proyectoAEnviar = {
+                                ...formData,
+                                status: estadoReal
+                            };
+
+                            // 3. Llamamos a la función pasándole el paquete
+                            const resultado = await guardarProyectoEnBaseDeDatos(proyectoAEnviar);
+                            setIsSaving(false)
                             
                             if (resultado.success) {
-                                Alert.alert("¡Arriba el telón!", "Proyecto creado exitosamente.");
-                                resetForm();
-                                router.replace('/');
+                                setIsSuccess(true); // Cambia el título a "SE LEVANTA EL TELÓN"
+
+                                const mensajeAlert = estadoReal == 'Inactivo' 
+                                    ? "El proyecto se creó como INACTIVO debido a la fecha de clausura." 
+                                    : "¡Proyecto creado exitosamente!";
+                                    
+                                Alert.alert(
+                                    "¡Arriba el telón!", mensajeAlert,
+                                    [
+                                        { 
+                                            text: "OK", 
+                                            onPress: () => {
+                                                // 🚀 La navegación ocurre JUSTO al dar clic en OK
+                                                resetForm();
+                                                router.replace('/(app)'); 
+                                            } 
+                                        }
+                                    ]
+                                );
                             }
                         }}
                     >
@@ -385,6 +468,7 @@ const cancelarProduccion = () => {
             setBusquedaActores={setBusquedaActores}
             theme={{ cardBg, dynamicText, secondaryText, borderCol }}
         />
+        <LoadingOverlay visible={isSaving} message="MONTANDO EL ESCENARIO..." />
         </View>
     );
 }

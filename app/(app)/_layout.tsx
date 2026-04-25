@@ -7,7 +7,10 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { Header } from '@/src/components/Header';
 import { MyText } from '@/src/components/ThemedText';
 import { supabase } from '@/src/lib/supabase';
+import AgendaScreen from './agenda';
+import ArchiveScreen from './archive';
 import ActiveSummaryScreen from './index';
+import LibraryScreen from './library';
 import SettingsScreen from './settings';
 
 const Tab = createMaterialTopTabNavigator();
@@ -58,7 +61,7 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
               case 'Libretos':
                 iconName = 'book-outline';
                 break;
-              case 'Elenco':
+              case 'Archivo':
                 iconName = 'people-outline';
                 break;
               case 'Proyecto':
@@ -74,13 +77,18 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
           },
         })}
       >
-        <Tab.Screen name="Calendar">
-          {() => <Placeholder name="Mi agenda" />}
-        </Tab.Screen>
+        <Tab.Screen
+          name="archive"
+          component={ArchiveScreen}
+          options={{ title: 'Archivo' }}
+        />
 
-        <Tab.Screen name="Elenco">
-          {() => <Placeholder name="En elenco" />}
-        </Tab.Screen>
+        <Tab.Screen
+          name="agenda"
+          component={AgendaScreen}
+          options={{ title: 'Agenda' }}
+        />
+
 
         <Tab.Screen
           name="index"
@@ -88,9 +96,11 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
           options={{ title: 'Inicio' }}
         />
 
-        <Tab.Screen name="Libretos">
-          {() => <Placeholder name="Libretos" />}
-        </Tab.Screen>
+        <Tab.Screen
+          name="library"
+          component={LibraryScreen}
+          options={{ title: 'Libretos' }}
+        />
 
         <Tab.Screen
           name="Ajustes"

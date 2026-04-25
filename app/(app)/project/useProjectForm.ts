@@ -12,34 +12,35 @@ interface UserProfile {
 
 export const useProjectForm = () => {
 
-const guardarProyectoEnBaseDeDatos = async () => {
+const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => { 
     try {
-        //Obtener usuario
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError || !user) {
-            Alert.alert("Error de sesión", "Debes estar logueado para crear proyectos.");
+            Alert.alert("Error de sesión", "Debes estar logueado.");
             return { success: false };
         }
-        // 1. Insertar el Proyecto
+
+        // 2. Ahora sí, 'datosFinales' existe. Si no se manda nada, usa el formData por defecto.
+        const dataParaGuardar = datosFinales || formData;
+
         const { data: proyectoCreado, error: errorProyecto } = await supabase
             .from('projects')
             .insert([
                 {
-                    title: formData.title,
-                    description: formData.description,
-                    script_url: formData.script_url, // Nombre del archivo o URL
-                    start_date: formData.start_date,
-                    end_date: formData.end_date,
-                    dias_funcion: formData.dias_funcion,
-                    theme_color: formData.theme_color,
-                    status: 'Activo',
+                    title: dataParaGuardar.title,
+                    description: dataParaGuardar.description,
+                    script_url: dataParaGuardar.script_url,
+                    start_date: dataParaGuardar.start_date,
+                    end_date: dataParaGuardar.end_date,
+                    dias_funcion: dataParaGuardar.dias_funcion,
+                    theme_color: dataParaGuardar.theme_color,
+                    status: dataParaGuardar.status, // 🚀 Usará 'Inactivo' si se calculó así
                     founder_id: user.id
                 }
             ])
             .select()
             .single();
-
         if (errorProyecto) throw errorProyecto;
 
         const projectId = proyectoCreado.id;
@@ -232,6 +233,7 @@ const guardarProyectoEnBaseDeDatos = async () => {
         buscarActorEnBaseDeDatos,
         setBusquedaActores,
         guardarProyectoEnBaseDeDatos,
+        
     };
 };
 
