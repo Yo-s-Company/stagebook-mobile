@@ -58,12 +58,16 @@ export const ProductionModal = ({
 
                         {busquedaActores.length > 0 && (
                             <View style={[styles.resultadosBusqueda, { backgroundColor: theme.cardBg, borderColor: theme.borderCol }]}>
-                                {busquedaActores.map((actor: any) => (
-                                    <TouchableOpacity 
+                                {busquedaActores.map((actor) => (
+                                    <TouchableOpacity
                                         key={actor.id}
                                         style={styles.actorItem}
                                         onPress={() => {
-                                            setNuevoMiembro({...nuevoMiembro, username: actor.username});
+                                            setNuevoMiembro({ 
+                                                ...nuevoMiembro, 
+                                                username: actor.full_name, 
+                                                assigned_profile_id: actor.id 
+                                            });
                                             setBusquedaActores([]); 
                                         }}
                                     >

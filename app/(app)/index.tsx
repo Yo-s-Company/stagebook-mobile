@@ -55,12 +55,27 @@ export default function ActiveSummaryScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // 1. Proyectos: 
+    // 1. Obtener IDs de proyectos donde el usuario es invitado (Aceptado)
+    const { data: invs } = await supabase
+      .from('project_invitations')
+      .select('project_id')
+      .eq('receiver_id', user.id)
+      .eq('status', 'accepted');
+    const idsInvitaciones = invs?.map(i => i.project_id) || [];
+
+    // 2. Obtener IDs de proyectos donde fue asignado directamente (Director que actúa)
+    const { data: directos } = await supabase
+      .from('project_characters')
+      .select('project_id')
+      .eq('assigned_profile_id', user.id);
+    const idsDirectos = directos?.map(d => d.project_id) || [];
+
+    // Proyectos: 
     const { data: projectsData } = await supabase
       .from('projects')
       .select('id, title, status, theme_color, project_characters(id)')
-      .eq('founder_id', user.id)
       .eq('status', 'Activo')
+      .or(`founder_id.eq.${user.id},id.in.(${[...idsInvitaciones, ...idsDirectos].join(',') || '00000000-0000-0000-0000-000000000000'})`)
       .order('created_at', { ascending: false });
 
     if (projectsData) {
@@ -72,35 +87,6 @@ export default function ActiveSummaryScreen() {
         theme_color: p.theme_color
       }));
       setProjects(transformedProjects);
-    }
-
-    // 2. Compañías: Extraemos solo la info de la empresa
-    const { data: members } = await supabase
-      .from('company_members')
-      .select('companies(id, name, image_url)')
-      .eq('profile_id', user.id)
-      .eq('is_active', true);
-
-    if (members) {
-      const userCompanies = members 
-        .map(m => {
-          const companyData = Array.isArray(m.companies) ? m.companies[0] : m.companies;
-          return companyData;
-        })
-        .filter(Boolean) as Company[]; 
-      
-      setCompanies(userCompanies);
-    }
-
-    // 3. Invitaciones:
-    const { data: invs } = await supabase
-      .from('company_invitations')
-      .select('*, companies(name)')
-      .eq('email', user.email)
-      .eq('status', 'pendiente');
-
-    if (invs) {
-      setNotifications(invs as CompanyNotification[]);
     }
 
   } catch (e) {

@@ -256,9 +256,8 @@ const cancelarProduccion = () => {
                         {formData.personajes.map((char, index) => (
                             <View key={index} style={[styles.charCard, { backgroundColor: cardBg, borderColor: borderCol }]}>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={{ color: dynamicText, fontWeight: 'bold', fontSize: 14 }}>
-                                        {char.character_name}
-                                    </Text>
+                            <Text style={{ color: dynamicText, fontWeight: 'bold' }}>@{char.actor_dessigned} <Text style={{ fontWeight: 'normal', color: secondaryText }}>- {char.character_name}</Text></Text>
+
                                     {char.description ? (
                                         <Text style={{ color: secondaryText, fontSize: 11 }}>{char.description}</Text>
                                     ) : null}
@@ -375,42 +374,59 @@ const cancelarProduccion = () => {
                     <TouchableOpacity 
                         style={[styles.primaryBtn, { backgroundColor: formData.theme_color }]} 
                         onPress={async () => {
-                            setIsSaving(true);
-                            if (!formData.title.trim()) return Alert.alert("Faltan datos", "El nombre es obligatorio.");
+                            // 1. VALIDACIONES PREVIAS (Sin encender el cargando aún)
+                            if (!formData.title.trim()) {
+                                return Alert.alert("Faltan datos", "El nombre es obligatorio.");
+                            }
 
-                            // 1. Cálculo de seguridad (Ingeniería de datos)
+                            if (!formData.start_date || !formData.end_date) {
+                                return Alert.alert(
+                                    "Fechas incompletas", 
+                                    "Para levantar el telón, debes definir tanto la fecha de estreno como la de clausura. Podrás editarlo después"
+                                );
+                            }
+
+                            if (formData.dias_funcion.length === 0) {
+                                return Alert.alert(
+                                    "Faltan funciones", 
+                                    "Debes seleccionar al menos un día de función a la semana. Podrás editarlo después"
+                                );
+                            }
+
+                            // 2. INICIO DE PROCESO (Ahora sí encendemos el Overlay)
+                            setIsSaving(true); 
+
                             const hoy = new Date();
                             hoy.setHours(0, 0, 0, 0);
                             
-                            // Creamos la fecha de clausura forzando que sea local (evita error de un día menos)
                             const fechaClausura = new Date(formData.end_date + 'T00:00:00'); 
-                            
                             const estadoReal = fechaClausura < hoy ? 'Inactivo' : 'Activo';
 
-                            // 2. Creamos el paquete de datos final
                             const proyectoAEnviar = {
                                 ...formData,
                                 status: estadoReal
                             };
 
-                            // 3. Llamamos a la función pasándole el paquete
+                            // 3. LLAMADA A BASE DE DATOS
                             const resultado = await guardarProyectoEnBaseDeDatos(proyectoAEnviar);
-                            setIsSaving(false)
+                            
+                            // 4. APAGAR OVERLAY INDEPENDIENTEMENTE DEL RESULTADO
+                            setIsSaving(false); 
                             
                             if (resultado.success) {
-                                setIsSuccess(true); // Cambia el título a "SE LEVANTA EL TELÓN"
+                                setIsSuccess(true); 
 
                                 const mensajeAlert = estadoReal == 'Inactivo' 
                                     ? "El proyecto se creó como INACTIVO debido a la fecha de clausura." 
                                     : "¡Proyecto creado exitosamente!";
                                     
                                 Alert.alert(
-                                    "¡Arriba el telón!", mensajeAlert,
+                                    "¡Arriba el telón!", 
+                                    mensajeAlert,
                                     [
                                         { 
                                             text: "OK", 
                                             onPress: () => {
-                                                // 🚀 La navegación ocurre JUSTO al dar clic en OK
                                                 resetForm();
                                                 router.replace('/(app)'); 
                                             } 

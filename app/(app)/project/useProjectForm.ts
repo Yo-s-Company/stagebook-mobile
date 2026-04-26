@@ -9,10 +9,25 @@ interface UserProfile {
     full_name: string | null;
     avatar_url: string | null;
 }
+interface Personaje {
+    character_name: string;
+    description?: string;
+    image_ref_url?: string;
+    video_ref_url?: string;
+    assigned_profile_id?: string | null;
+    actor_dessigned?: string; 
+}
+
+interface MiembroEquipo {
+    username: string;
+    role: string;
+    assigned_profile_id?: string | null;
+}
 
 export const useProjectForm = () => {
 
 const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => { 
+    
     try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -21,54 +36,94 @@ const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => {
             return { success: false };
         }
 
-        // 2. Ahora sí, 'datosFinales' existe. Si no se manda nada, usa el formData por defecto.
         const dataParaGuardar = datosFinales || formData;
 
+        // 1. Insertar el Proyecto Base
         const { data: proyectoCreado, error: errorProyecto } = await supabase
             .from('projects')
-            .insert([
-                {
-                    title: dataParaGuardar.title,
-                    description: dataParaGuardar.description,
-                    script_url: dataParaGuardar.script_url,
-                    start_date: dataParaGuardar.start_date,
-                    end_date: dataParaGuardar.end_date,
-                    dias_funcion: dataParaGuardar.dias_funcion,
-                    theme_color: dataParaGuardar.theme_color,
-                    status: dataParaGuardar.status, // 🚀 Usará 'Inactivo' si se calculó así
-                    founder_id: user.id
-                }
-            ])
+            .insert([{
+                title: dataParaGuardar.title,
+                description: dataParaGuardar.description,
+                script_url: dataParaGuardar.script_url,
+                start_date: dataParaGuardar.start_date,
+                end_date: dataParaGuardar.end_date,
+                dias_funcion: dataParaGuardar.dias_funcion,
+                theme_color: dataParaGuardar.theme_color,
+                status: dataParaGuardar.status,
+                founder_id: user.id
+            }])
             .select()
             .single();
-        if (errorProyecto) throw errorProyecto;
 
+        if (errorProyecto) throw errorProyecto;
         const projectId = proyectoCreado.id;
 
-        // 2. Insertar Personajes vinculados
-        if (formData.personajes.length > 0) {
-            const personajesData = formData.personajes.map(p => ({
-                project_id: projectId,
-                character_name: p.character_name,
-                description: p.description,
-                image_ref_url: p.image_ref_url,
-                video_ref_url: p.video_ref_url,
-                assigned_profile_id: p.assigned_profile_id
-            }));
-            const { error: errorChars } = await supabase.from('project_characters').insert(personajesData);
-            if (errorChars) throw errorChars;
+        // --- MANEJO DE PERSONAJES Y ELENCO ---
+            if (dataParaGuardar.personajes.length > 0) {
+                // Especificamos que 'p' es de tipo 'Personaje'
+                const invitados = dataParaGuardar.personajes.filter((p: Personaje) => p.assigned_profile_id && p.assigned_profile_id !== user.id);
+                const soloTexto = dataParaGuardar.personajes.filter((p: Personaje) => !p.assigned_profile_id || p.assigned_profile_id === user.id);
+
+                if (soloTexto.length > 0) {
+                    
+                    const personajesData = soloTexto.map((p: Personaje) => ({
+                        project_id: projectId,
+                        character_name: p.character_name,
+                        description: p.description,
+                        image_ref_url: p.image_ref_url,
+                        video_ref_url: p.video_ref_url,
+                        assigned_profile_id: p.assigned_profile_id
+                    }));
+                    await supabase.from('project_characters').insert(personajesData);
+                }
+                // invitaciones para actores
+            if (invitados.length > 0) {
+                
+                const invitacionesData = invitados.map((p:Personaje) => ({
+                    project_id: projectId,
+                    sender_id: user.id,
+                    receiver_id: p.assigned_profile_id,
+                    role: 'Actor',
+                    character_data: {
+                        character_name: p.character_name,
+                        description: p.description || '',
+                        image_ref_url: p.image_ref_url || '',
+                        video_ref_url: p.video_ref_url || ''
+                    },
+                    status: 'pending'
+                }));
+                await supabase.from('project_invitations').insert(invitacionesData);
+            }
         }
 
-        // 3. Insertar Equipo de Producción vinculado
-        if (formData.equipo_produccion.length > 0) {
-            const equipoData = formData.equipo_produccion.map(e => ({
-                project_id: projectId,
-                username: e.username,
-                role: e.role
-            }));
-            const { error: errorEquipo } = await supabase.from('production_team').insert(equipoData);
-            if (errorEquipo) throw errorEquipo;
-        }
+        // --- 🛠️ MANEJO DE EQUIPO DE PRODUCCIÓN ---
+                if (dataParaGuardar.equipo_produccion.length > 0) {
+                    const invitadosEquipo = dataParaGuardar.equipo_produccion.filter((e: MiembroEquipo) => e.assigned_profile_id);
+                    const staffDirecto = dataParaGuardar.equipo_produccion.filter((e: MiembroEquipo) => !e.assigned_profile_id);
+
+                    // 1. Insertar staff que es solo texto (sin perfil vinculado)
+                    if (staffDirecto.length > 0) {
+                        const equipoData = staffDirecto.map((e: MiembroEquipo) => ({
+                            project_id: projectId,
+                            username: e.username,
+                            role: e.role
+                        }));
+                        await supabase.from('production_team').insert(equipoData);
+                    }
+
+                    // 2. Insertar invitaciones para miembros con perfil vinculado
+                    if (invitadosEquipo.length > 0) {
+                        const invitacionesEquipoData = invitadosEquipo.map((e: MiembroEquipo) => ({
+                            project_id: projectId,
+                            sender_id: user.id,
+                            receiver_id: e.assigned_profile_id,
+                            role: e.role, 
+                            character_data: null, // No es un actor, se deja null
+                            status: 'pending'
+                        }));
+                        await supabase.from('project_invitations').insert(invitacionesEquipoData);
+                    }
+                }
 
         return { success: true };
 
@@ -78,8 +133,25 @@ const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => {
         return { success: false };
     }
 };
+const asignarDirectorComoActor = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+        // Obtenemos el perfil para el nombre de usuario
+        const { data: perfil } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', user.id)
+            .single();
 
-    //busqueda de usuarios
+        setNuevoChar({
+            ...nuevoChar,
+            actor_dessigned: perfil?.username || 'Yo',
+            assigned_profile_id: user.id
+        });
+    }
+};
+
+//busqueda de usuarios
     const [busquedaActores, setBusquedaActores] = useState<UserProfile[]>([]);
     const [buscando, setBuscando] = useState(false);
 
@@ -89,12 +161,14 @@ const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => {
             return;
         }
 
+        const { data: { user } } = await supabase.auth.getUser();
         setBuscando(true);
         // Buscar en la tabla de perfiles
         const { data, error } = await supabase
             .from('profiles')
             .select('id, username, full_name, avatar_url')
             .ilike('username', `%${texto}%`)
+            .neq('id', user?.id)
             .limit(5);
 
         if (!error && data) {
@@ -111,9 +185,9 @@ const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => {
         start_date: '',
         end_date: '',
         dias_funcion: [] as string[],
-        equipo_produccion: [] as any[],
+        equipo_produccion: [] as MiembroEquipo[],
         status: 'Activo',
-        personajes: [] as any[],
+        personajes: [] as Personaje[],
         theme_color: '#7C3AED',
     });
 
@@ -128,7 +202,8 @@ const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => {
 
     const [nuevoMiembro, setNuevoMiembro] = useState({
         username: '',
-        role: ''
+        role: '',
+        assigned_profile_id: null as string | null,
     });
 
     // 2. Funciones de Lógica de Personajes
@@ -136,7 +211,7 @@ const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => {
         if (nuevoChar.character_name.trim() === '') return false;
         setFormData(prev => ({
             ...prev,
-            personajes: [...prev.personajes, nuevoChar]
+            personajes: [...prev.personajes, { ...nuevoChar }]
         }));
         setNuevoChar({
             character_name: '',
@@ -144,7 +219,7 @@ const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => {
             image_ref_url: '',
             video_ref_url: '',
             actor_dessigned: '',
-            assigned_profile_id: null as string | null,
+            assigned_profile_id: null,
         });
         return true;
     };
@@ -170,9 +245,9 @@ const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => {
         if (nuevoMiembro.username.trim() === '') return false;
         setFormData(prev => ({
             ...prev,
-            equipo_produccion: [...prev.equipo_produccion, nuevoMiembro]
+            equipo_produccion: [...prev.equipo_produccion, { ...nuevoMiembro }]
         }));
-        setNuevoMiembro({ username: '', role: '' });
+        setNuevoMiembro({ username: '', role: '', assigned_profile_id: null });
         return true;
     };
 

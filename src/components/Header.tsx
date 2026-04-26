@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -12,7 +13,10 @@ export const Header: React.FC<HeaderProps> = ({ avatarUrl }) => {
   const router = useRouter();
 
   return (
-    <View style={[styles.headerContainer, { paddingTop: insets.top, height: 60 + insets.top, backgroundColor: '#9d0000' }]}>
+    
+<View style={[styles.headerContainer, { paddingTop: insets.top, height: 60 + insets.top, backgroundColor: '#9d0000' }]}>
+      
+      {/* 1. LADO IZQUIERDO: LOGO Y MARCA */}
       <View style={styles.headerTitleContainer}>
         <Image 
           source={require('../../assets/images/LogoEditado.png')} 
@@ -25,17 +29,25 @@ export const Header: React.FC<HeaderProps> = ({ avatarUrl }) => {
         </View>
       </View>
 
-<TouchableOpacity
-  onPress={() => {
-    router.push('/perfilScreen');
-  }}
-  activeOpacity={0.7}
->
-  <Image 
-    source={{ uri: avatarUrl || 'https://via.placeholder.com/150' }} 
-    style={styles.avatar} 
-  />
-</TouchableOpacity>
+      {/* 2. LADO DERECHO: CONTENEDOR DE ACCIONES (Campanita + Perfil) */}
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity 
+          onPress={() => router.push('/(auth)/notifications')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="notifications-outline" size={26} color="#FFFFFF" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          onPress={() => router.push('/perfilScreen')}
+          activeOpacity={0.7}
+        >
+          <Image 
+            source={{ uri: avatarUrl || 'https://via.placeholder.com/150' }} 
+            style={styles.avatar} 
+          />
+        </TouchableOpacity>
+      </View>
 
     </View>
   );
@@ -58,10 +70,16 @@ const styles = StyleSheet.create({
   brandStage: { fontWeight: 'bold', fontSize: 18, color: '#FFFFFF' },
   brandBook: { fontWeight: 'bold', fontSize: 18, color: '#000000' },
   avatar: { 
-    width: 32, 
+    width: 34, 
     height: 32, 
     borderRadius: 16, 
     borderWidth: 1, 
-    borderColor: '#fff' 
+    borderColor: '#00c8cf' 
   },
+  actionsContainer: {
+    flexDirection: 'row', // Alinea los elementos en fila
+    alignItems: 'center', // Los centra verticalmente entre sí
+    gap: 16, // Espacio exacto entre la campana y el avatar
+  },
+
 });

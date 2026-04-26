@@ -3,6 +3,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 interface CharacterModalProps {
     visible: boolean;
@@ -26,10 +27,9 @@ export const CharacterModal = ({
     visible, onClose, onSave, nuevoChar, setNuevoChar, theme, 
     busquedaActores, buscando, onBuscarActor, setBusquedaActores 
 }: CharacterModalProps) => {
-    return (
+return (
         <Modal visible={visible} animationType="slide" transparent={true}>
             <View style={styles.modalOverlay}>
-                {/* Usamos keyboardShouldPersistTaps para que al tocar un actor no se cierre el teclado inmediatamente */}
                 <ScrollView 
                     contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
                     keyboardShouldPersistTaps="handled" 
@@ -54,74 +54,104 @@ export const CharacterModal = ({
                             onChangeText={(t) => setNuevoChar({...nuevoChar, description: t})}
                         />
 
-                        
-
-                        {/* Inputs de abajo deben tener zIndex menor para que la lista pase por encima */}
                         <TextInput
-                            style={[styles.modalInput, { color: theme.dynamicText, borderColor: theme.borderCol, zIndex: 1 }]}
+                            style={[styles.modalInput, { color: theme.dynamicText, borderColor: theme.borderCol }]}
                             placeholder="URL Imagen de referencia"
                             placeholderTextColor={theme.secondaryText}
                             value={nuevoChar.image_ref_url}
                             onChangeText={(t) => setNuevoChar({...nuevoChar, image_ref_url: t})}
                         />
                         <TextInput
-                            style={[styles.modalInput, { color: theme.dynamicText, borderColor: theme.borderCol, zIndex: 1 }]}
+                            style={[styles.modalInput, { color: theme.dynamicText, borderColor: theme.borderCol }]}
                             placeholder="URL Video de referencia"
                             placeholderTextColor={theme.secondaryText}
                             value={nuevoChar.video_ref_url}
                             onChangeText={(t) => setNuevoChar({...nuevoChar, video_ref_url: t})}
                         />
-                        {/* Contenedor con Z-Index para la búsqueda flotante */}
-                        <View style={{ zIndex: 2000, elevation: 5 }}> 
-                            <TextInput
-                                style={[styles.modalInput, { color: theme.dynamicText, borderColor: theme.borderCol }]}
-                                placeholder="Buscar actor sugerido..."
-                                placeholderTextColor={theme.secondaryText}
-                                value={nuevoChar.actor_dessigned}
-                                onChangeText={(t) => {
-                                    setNuevoChar({...nuevoChar, actor_dessigned: t});
-                                    onBuscarActor(t);
+
+                        {/* --- SECCIÓN DE ASIGNACIÓN --- */}
+                        <View style={{ gap: 10 }}>
+                            {/* 1. BOTÓN "YO INTERPRETO" (Siempre visible y fuera del map) */}
+                            <TouchableOpacity 
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    backgroundColor: theme.borderCol + '30', 
+                                    padding: 12,
+                                    borderRadius: 10,
+                                    borderWidth: 1,
+                                    borderColor: theme.borderCol
                                 }}
-                            />
+                                onPress={async () => {
+                                    const { data: { user } } = await supabase.auth.getUser();
+                                    if (user) {
+                                        setNuevoChar({
+                                            ...nuevoChar,
+                                            actor_dessigned: "Yo (Director)",
+                                            assigned_profile_id: user.id
+                                        });
+                                        setBusquedaActores([]); 
+                                    }
+                                }}
+                            >
+                                <Ionicons name="person-circle-outline" size={24} color={theme.dynamicText} />
+                                <Text style={{ color: theme.dynamicText, marginLeft: 10, fontWeight: '600' }}>
+                                    Yo interpretaré este personaje
+                                </Text>
+                            </TouchableOpacity>
 
-                            {busquedaActores.length > 0 && (
-                                <View style={[styles.resultadosBusqueda, { backgroundColor: theme.cardBg, borderColor: theme.borderCol }]}>
-                                    {busquedaActores.map((actor: any) => (
-                                        <TouchableOpacity 
-                                            key={actor.id}
-                                            style={styles.actorItem}
-                                            onPress={() => {
-                                                setNuevoChar({...nuevoChar, actor_dessigned: actor.username, assigned_profile_id: actor.id});
-                                                setBusquedaActores([]); 
-                                            }}
-                                        >
-                                            <View style={styles.avatarContainer}>
-                                                {actor.avatar_url ? (
-                                                    <Image source={{ uri: actor.avatar_url }} style={styles.avatarImage} />
-                                                ) : (
-                                                    <View style={[styles.avatarPlaceholder, { backgroundColor: theme.borderCol }]}>
-                                                        <Ionicons name="person" size={14} color={theme.secondaryText} />
-                                                    </View>
-                                                )}
-                                            </View>
+                            {/* 2. BUSCADOR PARA OTROS ACTORES */}
+                            <View style={{ zIndex: 2000, elevation: 5 }}> 
+                                <TextInput
+                                    style={[styles.modalInput, { color: theme.dynamicText, borderColor: theme.borderCol }]}
+                                    placeholder="O busca a otro actor..."
+                                    placeholderTextColor={theme.secondaryText}
+                                    value={nuevoChar.actor_dessigned}
+                                    onChangeText={(t) => {
+                                        setNuevoChar({...nuevoChar, actor_dessigned: t});
+                                        onBuscarActor(t);
+                                    }}
+                                />
 
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={{ color: theme.dynamicText, fontWeight: 'bold' }}>@{actor.username}</Text>
-                                                {actor.full_name && (
-                                                    <Text style={{ color: theme.secondaryText, fontSize: 11 }}>{actor.full_name}</Text>
-                                                )}
-                                            </View>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            )}
+                                {busquedaActores.length > 0 && (
+                                    <View style={[styles.resultadosBusqueda, { backgroundColor: theme.cardBg, borderColor: theme.borderCol }]}>
+                                        {busquedaActores.map((actor) => (
+                                            <TouchableOpacity
+                                                key={actor.id}
+                                                style={styles.actorItem}
+                                                onPress={() => {
+                                                    setNuevoChar({ 
+                                                        ...nuevoChar, 
+                                                        actor_dessigned: actor.username, 
+                                                        assigned_profile_id: actor.id 
+                                                    });
+                                                    setBusquedaActores([]);
+                                                }}
+                                            >
+                                                <View style={styles.avatarContainer}>
+                                                    {actor.avatar_url ? (
+                                                        <Image source={{ uri: actor.avatar_url }} style={styles.avatarImage} />
+                                                    ) : (
+                                                        <View style={[styles.avatarPlaceholder, { backgroundColor: theme.borderCol }]}>
+                                                            <Ionicons name="person" size={14} color={theme.secondaryText} />
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={{ color: theme.dynamicText, fontWeight: 'bold' }}>@{actor.username}</Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
                         </View>
 
                         <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                             <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.borderCol }]} onPress={onClose}>
                                 <Text style={{ color: theme.dynamicText }}>Cerrar</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#dc2626' }]} onPress={() => {onSave();onClose();}}>
+                            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#dc2626' }]} onPress={() => {onSave(); onClose();}}>
                                 <Text style={{ color: '#fff', fontWeight: 'bold' }}>Guardar</Text>
                             </TouchableOpacity>
                         </View>

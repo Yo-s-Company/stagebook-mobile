@@ -30,10 +30,11 @@ export default function RootLayout() {
     const inAppGroup = segments[0] === '(app)';
     const isNewProject = segments[0] === 'new-project';
     const isPerfilScreen = segments[0] === 'perfilScreen';
+    const isNotificationScreen = (segments as string[]).includes('notifications');
 
-    if (session && !inAppGroup &&!isNewProject && !isPerfilScreen) {
+    if (session && !inAppGroup &&!isNewProject && !isPerfilScreen && !isNotificationScreen) {
       router.replace('/(app)');
-    } else if (!session && (inAppGroup || isNewProject)) {
+    } else if (!session && (inAppGroup || isNewProject || isNotificationScreen)) {
       router.replace('/login');
     }
   }, [session, initialized, segments]);
@@ -62,7 +63,14 @@ export default function RootLayout() {
             headerShown: false,
           }} 
         />
-        
+        <Stack.Screen 
+          name="(auth)/notifications" 
+          options={{ 
+            headerShown: false, 
+            presentation: 'card'
+          }} 
+        />
+          
         {/* 3. Flujo de autenticación */}
         <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
       </Stack>

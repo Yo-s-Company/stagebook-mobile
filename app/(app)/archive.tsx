@@ -14,22 +14,33 @@ import {
 
 export default function ArchiveScreen() {
     const [inactiveProjects, setInactiveProjects] = useState<any[]>([]);
-    const [filteredProjects, setFilteredProjects] = useState<any[]>([]); // 🚀 Estado para los resultados filtrados
-    const [searchQuery, setSearchQuery] = useState(''); // 🚀 Estado para el texto de búsqueda
+    const [filteredProjects, setFilteredProjects] = useState<any[]>([]); 
+    const [searchQuery, setSearchQuery] = useState(''); 
     const [loading, setLoading] = useState(true);
     const isDark = useColorScheme() === 'dark';
 
     const fetchInactiveProjects = async () => {
         setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // 1. Buscar IDs en invitaciones y asignaciones directas
+        const { data: invs } = await supabase.from('project_invitations').select('project_id').eq('receiver_id', user.id).eq('status', 'accepted');
+        const { data: dir } = await supabase.from('project_characters').select('project_id').eq('assigned_profile_id', user.id);
+        
+        const idsRelacionados = [...(invs?.map(i => i.project_id) || []), ...(dir?.map(d => d.project_id) || [])];
+
+        // 2. Consulta con filtro de estado Inactivo
         const { data, error } = await supabase
             .from('projects')
             .select('*')
             .eq('status', 'Inactivo')
+            .or(`founder_id.eq.${user.id},id.in.(${idsRelacionados.join(',') || '00000000-0000-0000-0000-000000000000'})`)
             .order('end_date', { ascending: false });
 
         if (!error) {
             setInactiveProjects(data || []);
-            setFilteredProjects(data || []); // Inicialmente mostramos todos
+            setFilteredProjects(data || []);
         }
         setLoading(false);
     };
