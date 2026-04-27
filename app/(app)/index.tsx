@@ -1,8 +1,9 @@
+import { ProjectDetailModal } from "@/src/components/ProjectDetailModal";
 import { MyText } from "@/src/components/ThemedText";
 import Typewriter from "@/src/components/Typewriter";
 import { supabase } from "@/src/lib/supabase";
 import { Company, CompanyNotification, ProjectSummary } from '@/src/types';
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -40,6 +41,12 @@ export default function ActiveSummaryScreen() {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
+  //Modal
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const [proyectosPlegados, setProyectosPlegados] = useState(true);
+
   const [loading, setLoading] = useState (true);
   const [refreshing, setRefreshing] = useState (false);
   //Compañias Veremos si lo ponemos en esta pantalla
@@ -50,45 +57,77 @@ export default function ActiveSummaryScreen() {
   const [showActions, setShowActions] = useState(false);
   const animation = useRef(new Animated.Value(0)).current; 
 
-  const fetchData = async () => {
+  const handleProjectPress = (project: any) => {
+    setSelectedProject(project);
+    setIsModalVisible(true);
+  };
+  const toggleProyectos = () => {
+    setProyectosPlegados(!proyectosPlegados);
+  };
+const fetchData = async () => {
   try {
+    setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // 1. Obtener IDs de proyectos donde el usuario es invitado (Aceptado)
-    const { data: invs } = await supabase
-      .from('project_invitations')
-      .select('project_id')
-      .eq('receiver_id', user.id)
-      .eq('status', 'accepted');
-    const idsInvitaciones = invs?.map(i => i.project_id) || [];
+    // 1. Ejecutar consultas en paralelo para mejorar la velocidad
+    const [invsResult, charsResult] = await Promise.all([
+      // Buscar invitaciones de staff aceptadas
+      supabase
+        .from('project_invitations')
+        .select('project_id, role')
+        .eq('receiver_id', user.id)
+        .eq('status', 'accepted'),
+      // Buscar personajes asignados (actores)
+      supabase
+        .from('project_characters')
+        .select('project_id, character_name')
+        .eq('assigned_profile_id', user.id)
+    ]);
 
-    // 2. Obtener IDs de proyectos donde fue asignado directamente (Director que actúa)
-    const { data: directos } = await supabase
-      .from('project_characters')
-      .select('project_id')
-      .eq('assigned_profile_id', user.id);
-    const idsDirectos = directos?.map(d => d.project_id) || [];
+    // 2. Extraer IDs para filtrar los proyectos
+    const idsInvitaciones = invsResult.data?.map(i => i.project_id) || [];
+    const idsPersonajes = charsResult.data?.map(d => d.project_id) || [];
+    const todosMisIds = [...new Set([...idsInvitaciones, ...idsPersonajes])];
 
-    // Proyectos: 
-    const { data: projectsData } = await supabase
+    // 3. Consultar los proyectos donde soy dueño o participante
+    let query = supabase
       .from('projects')
-      .select('id, title, status, theme_color, project_characters(id)')
-      .eq('status', 'Activo')
-      .or(`founder_id.eq.${user.id},id.in.(${[...idsInvitaciones, ...idsDirectos].join(',') || '00000000-0000-0000-0000-000000000000'})`)
-      .order('created_at', { ascending: false });
+      .select('*, project_characters(id)')
+      .eq('status', 'Activo');
 
-    if (projectsData) {
-      const transformedProjects: ProjectSummary[] = projectsData.map(p => ({
-        id: p.id,
-        title: p.title,
-        charactersCount: Array.isArray(p.project_characters) ? p.project_characters.length : 0,
-        status: p.status || 'Activo',
-        theme_color: p.theme_color
-      }));
-      setProjects(transformedProjects);
+    if (todosMisIds.length > 0) {
+      query = query.or(`founder_id.eq.${user.id},id.in.(${todosMisIds.join(',')})`);
+    } else {
+      query = query.eq('founder_id', user.id);
     }
 
+    const { data: projectsData, error } = await query.order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (projectsData) {
+      // 4. Transformar los datos para incluir el Rol y estado de Actor
+      const transformed = projectsData.map(p => {
+        const character = charsResult.data?.find(c => c.project_id === p.id);
+        const invitation = invsResult.data?.find(i => i.project_id === p.id);
+        
+        // Determinamos el rol: Actor > Staff > Director
+        let userRole = 'Director / Fundador';
+        if (character) userRole = character.character_name;
+        else if (invitation) userRole = invitation.role;
+
+        return {
+          ...p,
+          charactersCount: p.project_characters?.length || 0,
+          myRole: userRole,
+          isActor: !!character, // Si tiene un personaje, es actor
+          theme_color: p.theme_color || '#7C3AED'
+        };
+      });
+
+      setProjects(transformed);
+    }
   } catch (e) {
     console.error("Error en fetchData:", e);
   } finally {
@@ -142,6 +181,7 @@ useEffect(() => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#dc2626" />
         }
       >
+        
         <View style={styles.headerContainer}>
           <Typewriter 
             text="RESUMEN DE ACTIVIDAD" 
@@ -150,23 +190,71 @@ useEffect(() => {
           />
         </View>
 
-        {/* PROYECTOS ACTIVOS */}
-        <View style={styles.sectionDivider}>
-          <MyText style={styles.sectionTitleGreen}>
-            🟢 Proyectos en Curso ({projects.length})
-          </MyText>
 
-          
+      <View style={styles.sectionDivider}>
+  <TouchableOpacity 
+    activeOpacity={0.7} 
+    onPress={toggleProyectos}
+    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}
+  >
 
-          {projects.map((item) => (
-            <View key={item.id} style={[styles.projectCard, { backgroundColor: isDark ? '#1e1e1e' : '#FFFFFF', borderLeftColor: item.theme_color ||'#7C3AED' }]}>
-              <Text style={[styles.cardTitle, { color: dynamicText }]}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>
-                {item.charactersCount} Personajes · {item.status}
+        <MyText style={styles.sectionTitleGreen}>
+          🟢 Proyectos en Curso ({projects.length})
+        </MyText>
+
+<Ionicons 
+      name={proyectosPlegados ? "chevron-down" : "chevron-up"} 
+      size={22} 
+      color="#16a34a" 
+    />
+  </TouchableOpacity>
+
+  {/* Contenido Colapsable */}
+  {!proyectosPlegados && (
+    <View>
+      {projects.map((item) => (
+        <TouchableOpacity 
+          key={item.id} 
+          activeOpacity={0.8}
+          onPress={() => handleProjectPress(item)} 
+          style={[
+            styles.projectCard, 
+            { 
+              backgroundColor: isDark ? '#1e1e1e' : '#FFFFFF', 
+              borderLeftColor: item.theme_color || '#7C3AED',
+              borderLeftWidth: 6,
+              marginBottom: 12
+            }
+          ]}
+        >
+          <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardTitle, { color: isDark ? '#ded1b8' : '#18181b', fontSize: 18 }]}>
+                {item.title}
               </Text>
+              <View style={[styles.roleBadgeSmall, { backgroundColor: (item.theme_color || '#7C3AED') + '20' }]}>
+                <Text style={[styles.roleBadgeTextSmall, { color: item.theme_color || '#7C3AED' }]}>
+                  {item.myRole}
+                </Text>
+              </View>
             </View>
-          ))}
-        </View>
+            <MaterialCommunityIcons 
+              name="chevron-right" 
+              size={20} 
+              color={isDark ? "#52525b" : "#a1a1aa"} 
+            />
+          </View>
+        </TouchableOpacity>
+      ))}
+    </View>
+  )}
+</View>
+      <ProjectDetailModal 
+        visible={isModalVisible}
+        project={selectedProject}
+        onClose={() => setIsModalVisible(false)}
+        isDark={isDark}
+      />
 
         {/* EVENTOS */}
         <View style={styles.eventSection}>
@@ -348,5 +436,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333',
     elevation: 5,
+  },
+  roleBadgeSmall: {
+    alignSelf: 'flex-start', 
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+
+  roleBadgeTextSmall: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase', 
+    letterSpacing: 0.5,
   },
 });

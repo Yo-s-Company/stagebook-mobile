@@ -73,6 +73,8 @@ export interface ProjectSummary {
   charactersCount: number;
   status: string;
   theme_color?: string |null;
+  founder_id?: string;
+  myRole?:string;
 }
 
 //interfaces de compañias

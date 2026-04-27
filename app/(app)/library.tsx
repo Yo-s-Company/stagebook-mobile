@@ -1,3 +1,4 @@
+import { ProjectDetailModal } from '@/src/components/ProjectDetailModal';
 import { supabase } from '@/src/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
@@ -7,7 +8,8 @@ import {
     RefreshControl,
     StyleSheet,
     Text,
-    TextInput, TouchableOpacity,
+    TextInput,
+    TouchableOpacity,
     useColorScheme,
     View
 } from 'react-native';
@@ -19,61 +21,92 @@ export default function LibraryScreen() {
     const [loading, setLoading] = useState(true);
     const isDark = useColorScheme() === 'dark';
 
-    const fetchScripts = async () => {
-        setLoading(true);
-        // 🚀 Traemos el script_url y el título del proyecto relacionado
-        const { data, error } = await supabase
-            .from('projects')
-            .select('id, title, script_url, theme_color')
-            .not('script_url', 'is', null); // Solo proyectos que tengan un texto
+    // Estados para el Modal
+    const [selectedProject, setSelectedProject] = useState<any>(null);
+    const [isModalVisible, setIsModalVisible] = useState(false);
 
-        if (!error) {
-            setScripts(data || []);
-            setFilteredScripts(data || []);
-        }
-        setLoading(false);
+    const handleProjectPress = (project: any) => {
+        setSelectedProject(project);
+        setIsModalVisible(true);
     };
 
-    useEffect(() => {
-        const filtered = scripts.filter(item => 
-            item.script_url.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.title.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-        setFilteredScripts(filtered);
-    }, [searchQuery, scripts]);
+    const fetchScripts = async () => {
+        setLoading(true);
+        try {
+            // Traemos todos los campos y la relación con personajes para el conteo
+            const { data, error } = await supabase
+                .from('projects')
+                .select('*, project_characters(id)')
+                .not('script_url', 'is', null);
+
+            if (error) throw error;
+
+            if (data) {
+                // Transformamos los datos para que el Modal reciba lo que espera
+                const transformed = data.map(p => ({
+                    ...p,
+                    charactersCount: p.project_characters?.length || 0,
+                    myRole: 'Lectura de Libreto', // Rol por defecto en biblioteca
+                    isActor: false
+                }));
+                setScripts(transformed);
+                setFilteredScripts(transformed);
+            }
+        } catch (error) {
+            console.error("Error fetching scripts:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         fetchScripts();
     }, []);
 
+    useEffect(() => {
+        const filtered = scripts.filter(item =>
+            item.script_url?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.title?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setFilteredScripts(filtered);
+    }, [searchQuery, scripts]);
+
     const renderItem = ({ item }: { item: any }) => (
-        <TouchableOpacity style={[styles.card, { backgroundColor: isDark ? '#1e1e1e' : '#fff' }]}>
-            <View style={styles.iconContainer}>
-                <Ionicons name="document-text" size={30} color={item.theme_color} />
+        <TouchableOpacity 
+            activeOpacity={0.7}
+            onPress={() => handleProjectPress(item)}
+            style={[styles.card, { backgroundColor: isDark ? '#1e1e1e' : '#fff' }]}
+        >
+            <View style={[
+                styles.iconContainer, 
+                { backgroundColor: (item.theme_color || '#7C3AED') + '20' }
+            ]}>
+                <Ionicons name="document-text" size={24} color={item.theme_color || '#7C3AED'} />
             </View>
+
             <View style={styles.cardInfo}>
-                <Text numberOfLines={1} style={[styles.fileName, { color: isDark ? '#fff' : '#000' }]}>
+                <Text style={[styles.title, { color: isDark ? '#fff' : '#000' }]}>
+                    {item.title}
+                </Text>
+                <Text style={styles.subtitle} numberOfLines={1}>
                     {item.script_url}
                 </Text>
-                <Text style={styles.projectName}>
-                    Proyecto: <Text style={{ fontWeight: 'bold' }}>{item.title}</Text>
-                </Text>
             </View>
-            <Ionicons name="download-outline" size={20} color="#9e0000" />
+
+            <Ionicons name="chevron-forward" size={20} color={isDark ? "#555" : "#ccc"} />
         </TouchableOpacity>
     );
 
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#f5f5f5' }]}>
+        <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#f8f9fa' }]}>
             <View style={styles.header}>
-                <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#000' }]}>BIBLIOTECA</Text>
-                
-                <View style={[styles.searchContainer, { backgroundColor: isDark ? '#1e1e1e' : '#e4e4e7' }]}>
-                    <Ionicons name="search" size={18} color={isDark ? "#ded1b8" : "#71717a"} />
+                <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#000' }]}>Biblioteca</Text>
+                <View style={[styles.searchContainer, { backgroundColor: isDark ? '#1e1e1e' : '#eee' }]}>
+                    <Ionicons name="search" size={20} color="#888" />
                     <TextInput
                         style={[styles.searchInput, { color: isDark ? '#fff' : '#000' }]}
                         placeholder="Buscar libreto o proyecto..."
-                        placeholderTextColor={isDark ? "#71717a" : "#a1a1aa"}
+                        placeholderTextColor="#888"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
@@ -92,10 +125,20 @@ export default function LibraryScreen() {
                         <RefreshControl refreshing={loading} onRefresh={fetchScripts} tintColor="#9e0000" />
                     }
                     ListEmptyComponent={
-                        <Text style={styles.emptyText}>No se encontraron textos.</Text>
+                        <Text style={[styles.emptyText, { color: isDark ? '#555' : '#aaa' }]}>
+                            No se encontraron textos.
+                        </Text>
                     }
                 />
             )}
+
+            {/* Modal de Detalle */}
+            <ProjectDetailModal 
+                visible={isModalVisible}
+                project={selectedProject}
+                onClose={() => setIsModalVisible(false)}
+                isDark={isDark}
+            />
         </View>
     );
 }
@@ -104,7 +147,14 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { padding: 20, paddingTop: 60 },
     headerTitle: { fontSize: 24, fontWeight: 'bold', letterSpacing: 1, marginBottom: 15 },
-    searchContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, height: 45, borderRadius: 10, gap: 10 },
+    searchContainer: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        paddingHorizontal: 15, 
+        height: 45, 
+        borderRadius: 10, 
+        gap: 10 
+    },
     searchInput: { flex: 1, fontSize: 16 },
     card: { 
         flexDirection: 'row', 
@@ -117,9 +167,13 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 5
     },
-    iconContainer: { marginRight: 15 },
+    iconContainer: { 
+        marginRight: 15, 
+        padding: 10, 
+        borderRadius: 12 
+    },
     cardInfo: { flex: 1 },
-    fileName: { fontSize: 16, fontWeight: '600' },
-    projectName: { color: '#71717a', fontSize: 13, marginTop: 2 },
-    emptyText: { textAlign: 'center', marginTop: 100, color: '#71717a' }
+    title: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
+    subtitle: { fontSize: 13, color: '#666' },
+    emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16 },
 });
