@@ -5,7 +5,6 @@ import { StyleSheet, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Header } from '@/src/components/Header';
-import { MyText } from '@/src/components/ThemedText';
 import { supabase } from '@/src/lib/supabase';
 import AgendaScreen from './agenda';
 import ArchiveScreen from './archive';
@@ -14,13 +13,6 @@ import LibraryScreen from './library';
 import SettingsScreen from './settings';
 
 const Tab = createMaterialTopTabNavigator();
-
-// Placeholder para pantallas en desarrollo
-const Placeholder = ({ name }: { name: string }) => (
-  <View style={styles.placeholderContainer}>
-    <MyText>{name}</MyText>
-  </View>
-);
 
 function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
   const insets = useSafeAreaInsets();
@@ -58,14 +50,14 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
               case 'index':
                 iconName = 'home-outline';
                 break;
-              case 'Libretos':
+              case 'library':
                 iconName = 'book-outline';
                 break;
-              case 'Archivo':
-                iconName = 'people-outline';
-                break;
-              case 'Proyecto':
+              case 'archive':
                 iconName = 'folder-outline';
+                break;
+              case 'agenda':
+                iconName = 'calendar-outline';
                 break;
               case 'Ajustes':
                 iconName = 'settings-outline';
@@ -115,49 +107,51 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
 export default function AppLayout() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    let subscription: any;
+useEffect(() => {
+  let isMounted = true; 
+  let channel: any;
 
-    const setupAuthAndProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+  const setupAuthAndProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !isMounted) return;
 
-      if (user) {
-        // 1. Obtener avatar inicial
-        const { data } = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('id', user.id)
-          .single();
+    // 1. Obtener avatar inicial
+    const { data } = await supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .single();
 
-        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+    if (data?.avatar_url && isMounted) setAvatarUrl(data.avatar_url);
 
-        // 2. Suscribirse a cambios en tiempo real
-        subscription = supabase
-          .channel('profile-header-changes')
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'profiles',
-              filter: `id=eq.${user.id}`,
-            },
-            (payload) => {
-              if (payload.new.avatar_url) {
-                setAvatarUrl(payload.new.avatar_url);
-              }
-            }
-          )
-          .subscribe();
+    // 2. Configurar y Suscribir en un solo bloque fluido
+    channel = supabase.channel(`profile_updates_${user.id}`);
+      channel
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+      (payload: { new: { avatar_url?: string } }) => { 
+        if (isMounted && payload.new?.avatar_url) {
+          setAvatarUrl(payload.new.avatar_url);
+        }
       }
-    };
+    )
+      .subscribe(); 
+  };
 
-    setupAuthAndProfile();
+  setupAuthAndProfile();
 
-    return () => {
-      if (subscription) supabase.removeChannel(subscription);
-    };
-  }, []);
+  // 🧹 LIMPIEZA ABSOLUTA
+  return () => {
+    isMounted = false;
+    if (channel) supabase.removeChannel(channel);
+  };
+}, []);
 
   return (
     <SafeAreaProvider>

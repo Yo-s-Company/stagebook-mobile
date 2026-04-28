@@ -24,115 +24,145 @@ interface MiembroEquipo {
     assigned_profile_id?: string | null;
 }
 
+
+
 export const useProjectForm = () => {
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        start_date: '',
+        end_date: '',
+        script_url: '',
+        dias_funcion: [] as string[],
+        status: 'Activo',
+        theme_color: '#7C3AED',
+        personajes: [] as Personaje[],
+        equipo_produccion: [] as MiembroEquipo[],
+    });
 
-const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => { 
-    
-    try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Guardamos el asset completo del archivo para la subida posterior
+    const [archivoFisico, setArchivoFisico] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
 
-        if (authError || !user) {
-            Alert.alert("Error de sesión", "Debes estar logueado.");
-            return { success: false };
-        }
-
-        const dataParaGuardar = datosFinales || formData;
-
-        // 1. Insertar el Proyecto Base
-        const { data: proyectoCreado, error: errorProyecto } = await supabase
-            .from('projects')
-            .insert([{
-                title: dataParaGuardar.title,
-                description: dataParaGuardar.description,
-                script_url: dataParaGuardar.script_url,
-                start_date: dataParaGuardar.start_date,
-                end_date: dataParaGuardar.end_date,
-                dias_funcion: dataParaGuardar.dias_funcion,
-                theme_color: dataParaGuardar.theme_color,
-                status: dataParaGuardar.status,
-                founder_id: user.id
-            }])
-            .select()
-            .single();
-
-        if (errorProyecto) throw errorProyecto;
-        const projectId = proyectoCreado.id;
-
-        // --- MANEJO DE PERSONAJES Y ELENCO ---
-            if (dataParaGuardar.personajes.length > 0) {
-                // Especificamos que 'p' es de tipo 'Personaje'
-                const invitados = dataParaGuardar.personajes.filter((p: Personaje) => p.assigned_profile_id && p.assigned_profile_id !== user.id);
-                const soloTexto = dataParaGuardar.personajes.filter((p: Personaje) => !p.assigned_profile_id || p.assigned_profile_id === user.id);
-
-                if (soloTexto.length > 0) {
-                    
-                    const personajesData = soloTexto.map((p: Personaje) => ({
-                        project_id: projectId,
-                        character_name: p.character_name,
-                        description: p.description,
-                        image_ref_url: p.image_ref_url,
-                        video_ref_url: p.video_ref_url,
-                        assigned_profile_id: p.assigned_profile_id
-                    }));
-                    await supabase.from('project_characters').insert(personajesData);
-                }
-                // invitaciones para actores
-            if (invitados.length > 0) {
-                
-                const invitacionesData = invitados.map((p:Personaje) => ({
-                    project_id: projectId,
-                    sender_id: user.id,
-                    receiver_id: p.assigned_profile_id,
-                    role: 'Actor',
-                    character_data: {
-                        character_name: p.character_name,
-                        description: p.description || '',
-                        image_ref_url: p.image_ref_url || '',
-                        video_ref_url: p.video_ref_url || ''
-                    },
-                    status: 'pending'
+    const pickDocument = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: [
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                ],
+                copyToCacheDirectory: true
+            });
+            if (!result.canceled) {
+                setFormData(prev => ({
+                    ...prev,
+                    script_url: result.assets[0].name
                 }));
-                await supabase.from('project_invitations').insert(invitacionesData);
+                setArchivoFisico(result.assets[0]); 
+                return result.assets[0];
+            }
+        } catch (err) {
+            console.error("Error al seleccionar documento:", err);
+        }
+    };
+
+    const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => {
+        try {
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                Alert.alert("Error de sesión", "Debes estar logueado.");
+                return { success: false };
+            }
+
+            const dataParaGuardar = datosFinales || formData;
+
+            // 1. Insertar el Proyecto primero para obtener su ID
+            const { data: proyectoCreado, error: errorProyecto } = await supabase
+                .from('projects')
+                .insert({
+                    title: dataParaGuardar.title,
+                    description: dataParaGuardar.description,
+                    start_date: dataParaGuardar.start_date,
+                    end_date: dataParaGuardar.end_date,
+                    dias_funcion: dataParaGuardar.dias_funcion,
+                    theme_color: dataParaGuardar.theme_color,
+                    status: dataParaGuardar.status,
+                    founder_id: user.id,
+                })
+                .select()
+                .single();
+
+            if (errorProyecto) throw errorProyecto;
+            const projectId = proyectoCreado.id;
+
+            // 2. Subir el libreto si existe
+            if (archivoFisico) {
+                const filePath = `${projectId}/${archivoFisico.name}`;
+            try{
+                const response = await fetch(archivoFisico.uri);
+                const arrayBuffer = await response.arrayBuffer();
+
+                // 2. Subir el buffer directamente
+                const { error: uploadError } = await supabase.storage
+                    .from('project_scripts')
+                    .upload(filePath, arrayBuffer, {
+                    contentType: archivoFisico.name.endsWith('.docx') 
+                        ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+                        : (archivoFisico.mimeType || 'application/pdf'),
+                    upsert: true,
+                    cacheControl: '3600'
+                    });
+
+                if (!uploadError) {
+                    const {error: updateError} =await supabase
+                        .from('projects')
+                        .update({ script_url: filePath })
+                        .eq('id', projectId);
+
+                    if (updateError) throw updateError;
+                } else {
+                    throw uploadError;
+                }
+            } catch (uploadError: any){
+                console.error("Error crítico en la subida:", uploadError);
             }
         }
 
-        // --- 🛠️ MANEJO DE EQUIPO DE PRODUCCIÓN ---
-                if (dataParaGuardar.equipo_produccion.length > 0) {
-                    const invitadosEquipo = dataParaGuardar.equipo_produccion.filter((e: MiembroEquipo) => e.assigned_profile_id);
-                    const staffDirecto = dataParaGuardar.equipo_produccion.filter((e: MiembroEquipo) => !e.assigned_profile_id);
+            // 4. Insertar Personajes
+            if (dataParaGuardar.personajes.length > 0) {
+                const personajesParaInsertar = dataParaGuardar.personajes.map((p: any) => ({
+                    project_id: projectId,
+                    character_name: p.character_name,
+                    description: p.description || '',
+                    image_ref_url: p.image_ref_url || null,
+                    video_ref_url: p.video_ref_url || null,
+                    assigned_profile_id: p.assigned_profile_id || null,
+                }));
+                const { error: errorChars } = await supabase.from('project_characters').insert(personajesParaInsertar);
+                if (errorChars) throw errorChars;
+            }
 
-                    // 1. Insertar staff que es solo texto (sin perfil vinculado)
-                    if (staffDirecto.length > 0) {
-                        const equipoData = staffDirecto.map((e: MiembroEquipo) => ({
-                            project_id: projectId,
-                            username: e.username,
-                            role: e.role
-                        }));
-                        await supabase.from('production_team').insert(equipoData);
-                    }
+            // 5. Enviar Invitaciones al equipo
+            if (dataParaGuardar.equipo_produccion.length > 0) {
+                const invitaciones = dataParaGuardar.equipo_produccion.map((m: any) => ({
+                    project_id: projectId,
+                    receiver_id: m.assigned_profile_id,
+                    role: m.role,
+                    status: 'pending'
+                }));
+                const { error: errorInvs } = await supabase.from('project_invitations').insert(invitaciones);
+                if (errorInvs) throw errorInvs;
+            }
 
-                    // 2. Insertar invitaciones para miembros con perfil vinculado
-                    if (invitadosEquipo.length > 0) {
-                        const invitacionesEquipoData = invitadosEquipo.map((e: MiembroEquipo) => ({
-                            project_id: projectId,
-                            sender_id: user.id,
-                            receiver_id: e.assigned_profile_id,
-                            role: e.role, 
-                            character_data: null, // No es un actor, se deja null
-                            status: 'pending'
-                        }));
-                        await supabase.from('project_invitations').insert(invitacionesEquipoData);
-                    }
-                }
+            return { success: true, projectId };
+        } catch (error: any) {
+            console.error("Error al crear proyecto:", error);
+            Alert.alert("Error", error.message);
+            return { success: false };
+        }
+    };
 
-        return { success: true };
 
-    } catch (error: any) {
-        console.error("Error al lanzar proyecto:", error);
-        Alert.alert("Error de Conexión", error.message);
-        return { success: false };
-    }
-};
 const asignarDirectorComoActor = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -178,18 +208,6 @@ const asignarDirectorComoActor = async () => {
     };
     
     // 1. Estados del Formulario
-    const [formData, setFormData] = useState({
-        title: '',
-        description: '',
-        script_url: null as string | null,
-        start_date: '',
-        end_date: '',
-        dias_funcion: [] as string[],
-        equipo_produccion: [] as MiembroEquipo[],
-        status: 'Activo',
-        personajes: [] as Personaje[],
-        theme_color: '#7C3AED',
-    });
 
     const [nuevoChar, setNuevoChar] = useState({
         character_name: '',
@@ -256,7 +274,7 @@ const asignarDirectorComoActor = async () => {
         setFormData({
             title: '',
             description: '',
-            script_url: null,
+            script_url: '',
             start_date: '',
             end_date: '',
             dias_funcion: [],
@@ -265,29 +283,6 @@ const asignarDirectorComoActor = async () => {
             personajes: [],
             theme_color: '#7C3AED',
         });
-    };
-
-    //Logica para la subida de archivos
-    const pickDocument = async () => {
-        try {
-            const result = await DocumentPicker.getDocumentAsync({
-                type: [
-                    'application/pdf',
-                    'application/msword',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                ],
-                copyToCacheDirectory: true
-            });
-            if (!result.canceled){
-                setFormData (prev => ({
-                    ...prev,
-                    script_url: result.assets[0].name
-                }));
-                return result.assets[0];
-            }
-        } catch (err) {
-            console.error("Error al selecionar documento:", err);
-        }
     };
 
     return {
