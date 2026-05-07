@@ -57,6 +57,10 @@ export default function RegisterScreen() {
   const passwordShake = useShake();
 
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const redirectUrl = AuthSession.makeRedirectUri({ 
+    scheme: 'stagebookmobile', 
+    path: 'auth/callback' 
+  });
 
   const handleRegister = async () => {
     if (!name) {
@@ -87,7 +91,7 @@ export default function RegisterScreen() {
     const { error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } }
+      options: { data: { full_name: name }, emailRedirectTo: 'stagebookmobile://auth/callback' }
     });
 
     setIsLoading(false);

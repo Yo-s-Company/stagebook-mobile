@@ -94,6 +94,8 @@ const abrirVisorInterno = async (scriptPath: string, title: string) => {
         const { data } = supabase.storage.from('project_scripts').getPublicUrl(scriptPath);
         await WebBrowser.openBrowserAsync(data.publicUrl);
     };
+  const dynamicBg = isDark ? '#121212' : '#ded1b8';
+  const dynamicText = isDark ? '#ded1b8' : '#18181b';
 
     const renderItem = ({ item }: { item: any }) => (
         <TouchableOpacity 
@@ -119,9 +121,9 @@ const abrirVisorInterno = async (scriptPath: string, title: string) => {
     );
 
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#f8f9fa' }]}>
+        <View style={[styles.container, { backgroundColor: dynamicBg }]}>
             <View style={styles.header}>
-                <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#000' }]}>Biblioteca</Text>
+                <Text style={[styles.headerTitle, { color: dynamicText }]}>Biblioteca</Text>
                 <View style={[styles.searchContainer, { backgroundColor: isDark ? '#1e1e1e' : '#eee' }]}>
                     <Ionicons name="search" size={20} color="#888" />
                     <TextInput

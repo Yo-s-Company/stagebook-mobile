@@ -1,16 +1,20 @@
 import { MyText } from '@/src/components/ThemedText';
+import Typewriter from '@/src/components/Typewriter';
 import { supabase } from '@/src/lib/supabase';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   Appearance,
+  Image,
+  Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   TouchableOpacity,
   useColorScheme,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,98 +23,114 @@ export default function SettingsScreen() {
   const systemScheme = useColorScheme();
   const isDark = systemScheme === 'dark';
 
-  const themes = [
-    { id: 'light', label: 'Claro', icon: 'white-balance-sunny' },
-    { id: 'dark', label: 'Oscuro', icon: 'moon-waning-crescent' },
-    { id: 'system', label: 'Sistema', icon: 'responsive' },
-  ];
+  // Estados para Notificaciones
+  const [notifEnsayo, setNotifEnsayo] = useState(true);
+  const [notifFuncion, setNotifFuncion] = useState(true);
+  const [notifEvento, setNotifEvento] = useState(false);
+
+  const dynamicBg = isDark ? '#121212' : '#ded1b8';
+  const dynamicText = isDark ? '#ded1b8' : '#18181b';
+  const cardBg = isDark ? '#1e1e1e' : '#ccc'; // Color grisáceo del boceto
+  const borderCol = isDark ? '#27272a' : '#b1a691';
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Finalizar Función',
-      '¿Estás seguro de que quieres abandonar el camerino?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Salir',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase.auth.signOut();
-            if (!error) router.replace('/(auth)/login');
-          },
-        },
-      ]
-    );
+    Alert.alert('Finalizar Función', '¿Estás seguro de que quieres abandonar el camerino?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Salir', style: 'destructive', onPress: async () => {
+          const { error } = await supabase.auth.signOut();
+          if (!error) router.replace('/(auth)/login');
+      }},
+    ]);
   };
 
-    const dynamicBg = isDark ? '#121212' : '#ded1b8';
-    const dynamicText = isDark ? '#ded1b8' : '#18181b';
-    const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
-    const secondaryText = isDark ? '#a1a1aa' : '#52525b';
-    const borderCol = isDark ? '#27272a' : '#e4e4e7';
+  // Componente reutilizable para las filas de las tarjetas
+  const SettingRow = ({ label, icon, onPress, children }: any) => (
+    <TouchableOpacity onPress={onPress} style={styles.rowItem}>
+      <View style={styles.rowLeft}>
+        {icon && <MaterialCommunityIcons name={icon} size={20} color="#52525b" style={{ marginRight: 12 }} />}
+        <MyText style={[styles.rowText, { color: '#18181b' }]}>{label}</MyText>
+      </View>
+      {children}
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: dynamicBg }]}>
-      <ScrollView style={styles.flex1} contentContainerStyle={styles.scrollContent}>
-        <MyText style={[styles.mainTitle, { color: dynamicText }]}>
-          Ajustes de <MyText style={styles.textRed}>Escena</MyText>
-        </MyText>
-
-        {/* SECCIÓN: APARIENCIA */}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.headerContainer}>
+          <Typewriter 
+            text="CONFIGURACION DE LA CUENTA" 
+            speed={80} 
+            style={[styles.headerTitle, { color: dynamicText }]} 
+          />
+        </View>
+        {/* AJUSTES DE PERFIL */}
         <View style={styles.section}>
-          <MyText style={styles.sectionLabel}>Apariencia</MyText>
-          <View style={[styles.cardContainer, { backgroundColor: cardBg, borderColor: borderCol }]}>
-            {themes.map((theme, index) => {
-              const isActive = systemScheme === theme.id || theme.id === 'system';
-              return (
-                <TouchableOpacity
-                  key={theme.id}
-                  onPress={() => {
-                    if (theme.id === 'system') Appearance.setColorScheme(null);
-                    else Appearance.setColorScheme(theme.id as any);
-                  }}
-                  style={[
-                    styles.rowItem,
-                    index !== themes.length - 1 && { borderBottomWidth: 1, borderBottomColor: borderCol },
-                  ]}
-                >
-                  <View style={styles.rowLeft}>
-                    <MaterialCommunityIcons
-                      name={theme.icon as any}
-                      size={20}
-                      color={isActive ? '#7C3AED' : '#71717a'}
-                    />
-                    <MyText style={[styles.rowText, { color: dynamicText }, isActive && styles.fontBold]}>
-                      {theme.label}
-                    </MyText>
-                  </View>
-                  {isActive && <MaterialCommunityIcons name="check" size={20} color="#7C3AED" />}
-                </TouchableOpacity>
-              );
-            })}
+          <MyText style={styles.sectionLabel}>Ajustes de Perfil</MyText>
+          <View style={[styles.cardContainer, { backgroundColor: cardBg }]}>
+            <SettingRow label="Cambiar Nombre" onPress={() => {}} />
+            <SettingRow label="Editar Bio" onPress={() => {}} />
+            <SettingRow label="Cambiar foto de perfil" onPress={() => {}}>
+               <Image source={{ uri: 'https://via.placeholder.com/30' }} style={styles.miniAvatar} />
+            </SettingRow>
           </View>
         </View>
 
-        {/* SECCIÓN: CUENTA */}
+        {/* SEGURIDAD Y ACCESO */}
         <View style={styles.section}>
-          <MyText style={styles.sectionLabel}>Cuenta</MyText>
-
-          <TouchableOpacity
-            onPress={() => router.push('/(auth)/onboarding')}
-            style={[styles.accountBtn, { backgroundColor: cardBg, borderColor: borderCol }]}
-          >
-            <MaterialCommunityIcons name="account-edit-outline" size={22} color="#71717a" />
-            <MyText style={[styles.accountBtnText, { color: dynamicText }]}>Editar Perfil Artístico</MyText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleLogout}
-            style={[styles.logoutBtn, { backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2' }]}
-          >
-            <MaterialCommunityIcons name="logout" size={22} color="#ef4444" />
-            <MyText style={styles.logoutBtnText}>Cerrar Sesión</MyText>
-          </TouchableOpacity>
+          <MyText style={styles.sectionLabel}>Seguridad y Acceso</MyText>
+          <View style={[styles.cardContainer, { backgroundColor: cardBg }]}>
+            <SettingRow label="Cambiar Contraseña" onPress={() => {}} />
+            <SettingRow label="Verificación de Dos Pasos" onPress={() => {}} />
+          </View>
         </View>
+
+        {/* NOTIFICACIONES */}
+        <View style={styles.section}>
+          <MyText style={styles.sectionLabel}>Notificaciones</MyText>
+          <View style={[styles.cardContainer, { backgroundColor: cardBg }]}>
+            <View style={styles.rowItem}>
+              <View style={styles.rowLeft}>
+                <MyText style={styles.rowText}>Notificaciones de </MyText>
+                <View style={[styles.tag, { backgroundColor: '#f97316' }]}><MyText style={styles.tagText}>Ensayo</MyText></View>
+              </View>
+              <Switch value={notifEnsayo} onValueChange={setNotifEnsayo} trackColor={{ true: '#7C3AED' }} />
+            </View>
+            <View style={styles.rowItem}>
+              <View style={styles.rowLeft}>
+                <MyText style={styles.rowText}>Alertas de </MyText>
+                <View style={[styles.tag, { backgroundColor: '#0000ff' }]}><MyText style={styles.tagText}>Función</MyText></View>
+              </View>
+              <Switch value={notifFuncion} onValueChange={setNotifFuncion} trackColor={{ true: '#7C3AED' }} />
+            </View>
+            <View style={styles.rowItem}>
+              <View style={styles.rowLeft}>
+                <MyText style={styles.rowText}>Alerta de </MyText>
+                <View style={[styles.tag, { backgroundColor: '#008000' }]}><MyText style={styles.tagText}>Evento</MyText></View>
+              </View>
+              <Switch value={notifEvento} onValueChange={setNotifEvento} trackColor={{ true: '#7C3AED' }} />
+            </View>
+          </View>
+        </View>
+
+        {/* TEMA */}
+        <View style={styles.section}>
+          <MyText style={styles.sectionLabel}>Tema</MyText>
+          <View style={[styles.cardContainer, { backgroundColor: cardBg }]}>
+            <SettingRow label="Claro" onPress={() => Appearance.setColorScheme('light')} />
+            <SettingRow label="Oscuro" onPress={() => Appearance.setColorScheme('dark')} />
+            <SettingRow label="Igual al del sistema" onPress={() => Appearance.setColorScheme(null)} />
+          </View>
+        </View>
+
+        {/* BOTONES DE ACCIÓN */}
+        <TouchableOpacity style={styles.saveBtn}>
+          <MyText style={styles.saveBtnText}>GUARDAR CAMBIOS</MyText>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtnFull}>
+          <MyText style={styles.logoutBtnTextFull}>CERRAR SESIÓN</MyText>
+        </TouchableOpacity>
 
         <MyText style={styles.footerVersion}>StageBook v1.0.0 — 2026</MyText>
       </ScrollView>
@@ -119,28 +139,30 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex1: { flex: 1 },
   safeArea: { flex: 1 },
-  scrollContent: { paddingHorizontal: 24 },
-  mainTitle: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    marginTop: 32,
-    marginBottom: 40,
-    letterSpacing: -1,
-    textTransform: 'uppercase',
-  },
-  textRed: { color: '#dc2626' },
-  section: { marginBottom: 32 },
-  sectionLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 2, color: '#71717a', marginBottom: 16, marginLeft: 4 },
-  cardContainer: { borderRadius: 24, borderWidth: 1, overflow: 'hidden' },
-  rowItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  mainTitle: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginTop: 20, marginBottom: 30, textTransform: 'uppercase' },
+  section: { marginBottom: 25 },
+  sectionLabel: { fontSize: 13, fontWeight: '600', color: '#3f3f46', marginBottom: 10, textTransform: 'uppercase' },
+  cardContainer: { borderRadius: 12, overflow: 'hidden' },
+  rowItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 15 },
   rowLeft: { flexDirection: 'row', alignItems: 'center' },
-  rowText: { fontSize: 16, opacity: 0.9, marginLeft: 12 },
-  fontBold: { fontWeight: 'bold', opacity: 1 },
-  accountBtn: { padding: 20, borderRadius: 24, flexDirection: 'row', alignItems: 'center', borderWidth: 1, marginBottom: 12 },
-  accountBtnText: { fontSize: 16, fontWeight: 'bold', marginLeft: 12 },
-  logoutBtn: { padding: 20, borderRadius: 24, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' },
-  logoutBtnText: { color: '#ef4444', fontSize: 16, fontWeight: 'bold', marginLeft: 12 },
-  footerVersion: { textAlign: 'center', color: '#71717a', fontSize: 10, marginTop: 48, marginBottom: 40, letterSpacing: 1.5, textTransform: 'uppercase' },
+  rowText: { fontSize: 15, color: '#18181b' },
+  miniAvatar: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: '#000' },
+  tag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginLeft: 5 },
+  tagText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  saveBtn: { backgroundColor: '#000', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 10 },
+  saveBtnText: { color: '#fff', fontWeight: 'bold', letterSpacing: 1 },
+  logoutBtnFull: { backgroundColor: '#e11d48', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 15 },
+  logoutBtnTextFull: { color: '#fff', fontWeight: 'bold', letterSpacing: 1 },
+  footerVersion: { textAlign: 'center', color: '#71717a', fontSize: 10, marginTop: 30 },
+    headerTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      letterSpacing: -1,
+      fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    },
+      headerContainer: { alignItems: 'center', marginBottom: 40, justifyContent: 'center' },
+
 });
