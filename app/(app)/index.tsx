@@ -2,7 +2,7 @@ import { ProjectDetailModal } from "@/src/components/ProjectDetailModal";
 import { MyText } from "@/src/components/ThemedText";
 import Typewriter from "@/src/components/Typewriter";
 import { supabase } from "@/src/lib/supabase";
-import { Company, CompanyNotification, ProjectSummary } from '@/src/types';
+import { Company, CompanyNotification, EventoCalculado, ProjectSummary } from '@/src/types';
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
@@ -29,12 +29,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
-const MOCK_EVENTS = [
-  { id: "1", projectTitle: "Hamlet", type: "Ensayo", date: "Hoy · 7:00 PM" },
-  { id: "2", projectTitle: "Bernarda Alba", type: "Función", date: "Mañana · 8:30 PM" },
-];
-
 export default function ActiveSummaryScreen() {
+  const [eventosProximos, setEventosProximos] = useState<EventoCalculado[]>([]);
   const navigation = useNavigation<any>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -169,6 +165,61 @@ useEffect(() => {
     opacity: animation,
   };
 
+const calcularProximosEventos = useCallback((proyectos: any[]) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  
+  const horizonteMaximo = new Date(hoy);
+  horizonteMaximo.setDate(hoy.getDate() + 14);
+  
+  const dicDias: { [key: string]: number } = { 
+    'Dom': 0, 'Lun': 1, 'Mar': 2, 'Mié': 3, 'Jue': 4, 'Vie': 5, 'Sáb': 6 
+  };
+
+  let listaEventos: any[] = [];
+
+  proyectos.forEach(proyecto => {
+    const inicio = new Date(proyecto.start_date + 'T00:00:00');
+    const fin = new Date(proyecto.end_date + 'T00:00:00');
+    const diasPermitidos = proyecto.dias_funcion.map((d: string) => dicDias[d]);
+
+    for (let d = new Date(hoy); d <= fin && d <= horizonteMaximo; d.setDate(d.getDate() + 1)) {
+      if (d < inicio) continue; 
+      
+      if (diasPermitidos.includes(d.getDay())) {
+        const fechaEvento = new Date(d);
+        
+        // --- LÓGICA DE DÍAS RESTANTES ---
+        const diffTime = fechaEvento.getTime() - hoy.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const countdownText = diffDays === 0 ? "HOY" : `Faltan ${diffDays} días`;
+
+        listaEventos.push({
+          id: `${proyecto.id}-${fechaEvento.getTime()}`,
+          projectTitle: proyecto.title,
+          type: "Función", // Por ahora estático, listo para lógica futura
+          dateDisplay: fechaEvento.toLocaleDateString('es-ES', { 
+            weekday: 'long', day: 'numeric', month: 'long' 
+          }),
+          countdown: countdownText,
+          color: proyecto.theme_color,
+          rawDate: fechaEvento.getTime()
+        });
+      }
+    }
+  });
+
+  listaEventos.sort((a, b) => a.rawDate - b.rawDate);
+  setEventosProximos(listaEventos);
+}, []);
+
+  // Actualiza el useEffect que trae los proyectos para llamar a esta función
+  useEffect(() => {
+    if (projects.length > 0) {
+      calcularProximosEventos(projects);
+    }
+  }, [projects, calcularProximosEventos]);
+
   const dynamicBg = isDark ? '#121212' : '#dedede';
   const dynamicText = isDark ? '#ded1b8' : '#18181b';
   const titles = isDark ? '#cc00ff' : '#9c0000';
@@ -272,25 +323,38 @@ useEffect(() => {
             🎬 Próximos Eventos
           </Text>
 
-          {MOCK_EVENTS.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              activeOpacity={0.8}
-              style={[styles.eventCard, { backgroundColor: isDark ? '#1a202c' : '#FFFFFF' }]}
-            >
-              <View style={styles.eventHeader}>
-                <Text style={styles.eventProjectTitle}>{item.projectTitle}</Text>
-                <Text style={[styles.eventType, { color: item.type === "Ensayo" ? "#f97316" : "#16a34a" }]}>
-                  {item.type}
+      {eventosProximos.length > 0 ? (
+          eventosProximos.map((event) => (
+            <View key={event.id} style={[styles.eventCard, { backgroundColor: isDark ? "#1e1e1e" : "#f4f4f5" }]}>
+              {/* Barra de color lateral */}
+              <View style={[styles.eventColorBar, { backgroundColor: event.color }]} />
+              
+              {/* Contenedor de información para evitar que se fusione con la barra */}
+            <View style={styles.eventInfo}>
+              <View style={styles.eventHeaderRow}>
+                <Text style={[styles.eventProject, { color: isDark ? "#fff" : "#18181b" }]} numberOfLines={1}>
+                  {event.projectTitle}
                 </Text>
-              </View>
-              <View style={styles.eventFooter}>
-                <MaterialCommunityIcons name="clock-outline" size={14} color={isDark ? "#a1a1aa" : "#555"} />
-                <Text style={[styles.eventDate, { color: isDark ? "#a1a1aa" : "#52525b" }]}>{item.date}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+
+                  <View style={[styles.typeBadge, { backgroundColor: event.type === 'Función' ? '#2563eb' : '#16a34a' }]}>
+                    <Text style={styles.typeBadgeText}>{event.type}</Text>
+                  </View>
+                </View>
+                  
+              <Text style={[styles.eventDateText, { color: isDark ? "#a1a1aa" : "#71717a" }]}>
+                {event.dateDisplay}
+              </Text>
+              
+              <Text style={[styles.eventCountdown, { color: event.color }]}>
+                {event.countdown}
+              </Text>
+            </View>
+          </View>
+          ))
+        ) : (
+          <Text style={styles.emptyText}>No hay funciones programadas próximamente.</Text>
+        )}
+      </View>
       </ScrollView>
 
 {/* MODAL DE ACCIONES CON BOTONES EXPLÍCITOS */}
@@ -361,6 +425,7 @@ useEffect(() => {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 24 },
   headerContainer: { alignItems: 'center', marginBottom: 40, justifyContent: 'center' },
@@ -389,16 +454,17 @@ const styles = StyleSheet.create({
   cardSubtitle: { fontSize: 12, color: '#71717a', marginTop: 4 },
   eventSection: { marginBottom: 40 },
   eventCard: {
+    flexDirection: 'row',
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6',
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
+    alignItems: 'center',
+    overflow: 'hidden',
   },
   eventHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   eventProjectTitle: { fontWeight: 'bold', color: '#2563eb' },
@@ -461,4 +527,75 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', 
     letterSpacing: 0.5,
   },
+  eventColorBar: {
+    width: 5,
+    height: '100%',
+    borderRadius: 2,
+    marginRight: 12, 
+  },
+  eventInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  eventProject: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  eventDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sectionContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  emptyText: {
+    color: '#888',
+    fontStyle: 'italic',
+    marginLeft: 10,
+    textAlign: 'center',
+    marginTop: 10,
+  },
+eventHeaderRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  width: '100%',
+},
+eventDateText: {
+  fontSize: 14,
+  textTransform: 'capitalize',
+  marginBottom: 4,
+},
+eventCountdown: {
+  fontSize: 13,
+  fontWeight: '800',
+  letterSpacing: 0.5,
+},
+typeBadge: {
+  paddingHorizontal: 8,
+  paddingVertical: 3,
+  borderRadius: 6,
+  marginLeft: 10,
+},
+typeBadgeText: {
+  color: '#fff',
+  fontSize: 10,
+  fontWeight: '900',
+  textTransform: 'uppercase',
+},
 });

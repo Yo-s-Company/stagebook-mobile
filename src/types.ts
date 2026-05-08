@@ -77,6 +77,18 @@ export interface ProjectSummary {
   myRole?:string;
 }
 
+export interface EventoCalculado {
+  id: string;
+  projectTitle: string;
+  type: string;
+  date: Date;
+  dateDisplay: string;
+  color: string;
+  countdown: string;
+  rawDate: number;
+  
+}
+
 //interfaces de compañias
 export interface Company {
   id: string;  

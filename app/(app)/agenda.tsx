@@ -1,7 +1,7 @@
 import Typewriter from '@/src/components/Typewriter';
 import { supabase } from '@/src/lib/supabase';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 
 // Configuración en español
@@ -39,26 +39,40 @@ export default function AgendaCalendarScreen() {
         setLoading(false);
     };
 
-    // 🧠 LÓGICA DE INGENIERÍA: Mapear proyectos a fechas del calendario
-    const generarMarcasCalendario = (proyectos: any[]) => {
+const generarMarcasCalendario = (proyectos: any[]) => {
         let marks: any = {};
+        const dicDias: { [key: string]: number } = { 'Dom': 0, 'Lun': 1, 'Mar': 2, 'Mié': 3, 'Jue': 4, 'Vie': 5, 'Sáb': 6 };
 
         proyectos.forEach(proyecto => {
-            // Aquí podrías expandir la lógica para marcar cada día entre start y end
-            // Por ahora marcamos el día de inicio como ejemplo de "Estreno"
-            marks[proyecto.start_date] = {
-                marked: true,
-                dotColor: proyecto.theme_color,
-                selected: true,
-                selectedColor: proyecto.theme_color + '30', // Color suave de fondo
-            };
+            const inicio = new Date(proyecto.start_date + 'T00:00:00');
+            const fin = new Date(proyecto.end_date + 'T00:00:00');
+            const diasPermitidos = proyecto.dias_funcion.map((d: string) => dicDias[d]);
+
+            // Recorremos cada día desde el estreno hasta la clausura
+            for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+                const dateString = d.toISOString().split('T')[0];
+                const esDiaDeFuncion = diasPermitidos.includes(d.getDay());
+
+                if (esDiaDeFuncion) {
+                    marks[dateString] = {
+                        marked: true,
+                        dotColor: proyecto.theme_color,
+                        selected: true,
+                        selectedColor: proyecto.theme_color + '30', // Fondo suave para el rango
+                    };
+                }
+            }
         });
         setMarkedDates(marks);
     };
 
-    const handleDayPress = (day: any) => {
-        // Filtrar proyectos que coincidan con el día seleccionado
-        const found = projects.filter(p => p.start_date === day.dateString);
+const handleDayPress = (day: any) => {
+        const found = projects.filter(p => {
+            const inicio = new Date(p.start_date);
+            const fin = new Date(p.end_date);
+            const actual = new Date(day.dateString);
+            return actual >= inicio && actual <= fin;
+        });
         setSelectedDayProjects(found);
     };
 
@@ -66,67 +80,58 @@ export default function AgendaCalendarScreen() {
     const dynamicBg = isDark ? '#121212' : '#dedede';
     const titles = isDark ? '#cc00ff' : '#9c0000';
 
-
-
-
-    return (
+return (
         <View style={[styles.container, { backgroundColor: dynamicBg }]}>
-            <View style={styles.headerWrapper}>
-                <Typewriter 
-                text="AGENDA" 
-                speed={80} 
-                style={[styles.headerTitle, { color: typewriter }]} 
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+                <View style={styles.headerWrapper}>
+                    <Typewriter text="AGENDA" speed={80} style={[styles.headerTitle, { color: typewriter }]} />
+                </View>
+                                
+                <Calendar
+                    theme={{
+                        calendarBackground: isDark ? '#1e1e1e' : '#fff',
+                        textSectionTitleColor: '#9e0000',
+                        todayTextColor: '#9e0000',
+                        dayTextColor: isDark ? '#fff' : '#2d4150',
+                        monthTextColor: isDark ? '#fff' : '#2d4150',
+                    }}
+                    markedDates={markedDates}
+                    onDayPress={handleDayPress}
+                    style={styles.calendar}
                 />
-            </View>
-                            
-            <Calendar
-                theme={{
-                    backgroundColor: 'transparent',
-                    calendarBackground: isDark ? '#1e1e1e' : '#fff',
-                    textSectionTitleColor: '#9e0000',
-                    selectedDayBackgroundColor: '#9e0000',
-                    todayTextColor: '#9e0000',
-                    dayTextColor: isDark ? '#fff' : '#2d4150',
-                    monthTextColor: isDark ? '#fff' : '#2d4150',
-                    indicatorColor: '#9e0000',
-                }}
-                markedDates={markedDates}
-                onDayPress={handleDayPress}
-                style={styles.calendar}
-            />
 
-            <ScrollView style={styles.detailsContainer}>
-                <Text style={[styles.sectionLabel, {color: titles}]}>Eventos del día:</Text>
-                {selectedDayProjects.length > 0 ? (
-                    selectedDayProjects.map(p => (
-                        <View key={p.id} style={[styles.eventCard, { borderLeftColor: p.theme_color }]}>
-                            <Text style={[styles.eventTitle, { color: isDark ? '#fff' : '#000' }]}>{p.title}</Text>
-                            <Text style={styles.eventSubtitle}>Estreno de producción</Text>
-                        </View>
-                    ))
-                ) : (
-                    <Text style={styles.emptyText}>No hay funciones programadas para esta fecha.</Text>
-                )}
+                <View style={styles.detailsContainer}>
+                    <Text style={[styles.sectionLabel, { color: isDark ? '#cc00ff' : '#9e0000' }]}>
+                        Eventos de la Temporada:
+                    </Text>
+                    {loading ? (
+                        <ActivityIndicator color="#9e0000" />
+                    ) : selectedDayProjects.length > 0 ? (
+                        selectedDayProjects.map(p => (
+                            <View key={p.id} style={[styles.eventCard, { borderLeftColor: p.theme_color, backgroundColor: isDark ? '#1e1e1e' : '#fff' }]}>
+                                <Text style={[styles.eventTitle, { color: isDark ? '#fff' : '#000' }]}>{p.title}</Text>
+                                <Text style={styles.eventSubtitle}>Producción en Temporada</Text>
+                            </View>
+                        ))
+                    ) : (
+                        <Text style={styles.emptyText}>Selecciona una fecha marcada para ver los detalles.</Text>
+                    )}
+                </View>
             </ScrollView>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, paddingTop: 60 },
-    title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, letterSpacing: 2 },
+    container: { flex: 1 },
+    scrollContent: { paddingTop: 60, paddingBottom: 40 },
+    headerWrapper: { alignItems: 'center', marginBottom: 15 },
+    headerTitle: { fontSize: 28, fontWeight: 'bold' },
     calendar: { borderRadius: 15, marginHorizontal: 20, elevation: 5, shadowOpacity: 0.1 },
     detailsContainer: { padding: 25 },
-    sectionLabel: { color: '#666', fontWeight: 'bold', marginBottom: 10, fontSize: 12 },
-    eventCard: { padding: 15, backgroundColor: '#9e000010', borderLeftWidth: 5, borderRadius: 8, marginBottom: 10 },
+    sectionLabel: { fontWeight: 'bold', marginBottom: 15, fontSize: 13, textTransform: 'uppercase' },
+    eventCard: { padding: 15, borderLeftWidth: 5, borderRadius: 8, marginBottom: 10, elevation: 2 },
     eventTitle: { fontSize: 18, fontWeight: 'bold' },
-    eventSubtitle: { color: '#666', fontSize: 13 },
-    emptyText: { color: '#888', fontStyle: 'italic', marginTop: 10 },
-    headerTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 15 },
-        headerWrapper: { 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        width: '100%',
-    },
-
+    eventSubtitle: { color: '#666', fontSize: 13, marginTop: 4 },
+    emptyText: { color: '#888', fontStyle: 'italic', marginTop: 10, textAlign: 'center' },
 });
