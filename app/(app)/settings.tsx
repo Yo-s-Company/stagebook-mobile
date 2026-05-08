@@ -28,10 +28,11 @@ export default function SettingsScreen() {
   const [notifFuncion, setNotifFuncion] = useState(true);
   const [notifEvento, setNotifEvento] = useState(false);
 
-  const dynamicBg = isDark ? '#121212' : '#ded1b8';
-  const dynamicText = isDark ? '#ded1b8' : '#18181b';
-  const cardBg = isDark ? '#1e1e1e' : '#ccc'; // Color grisáceo del boceto
-  const borderCol = isDark ? '#27272a' : '#b1a691';
+  const dynamicBg = isDark ? '#121212' : '#dedede';
+  const dynamicText = isDark ? '#ded1b8' : '#000000'; 
+  const cardBg = isDark ? '#1e1e1e' : '#bebebe'; 
+  const titles = isDark ? '#cc00ff' : '#9c0000';
+  const typewriter = isDark ? '#ded1b8' : '#776837';
 
   const handleLogout = async () => {
     Alert.alert('Finalizar Función', '¿Estás seguro de que quieres abandonar el camerino?', [
@@ -48,7 +49,7 @@ export default function SettingsScreen() {
     <TouchableOpacity onPress={onPress} style={styles.rowItem}>
       <View style={styles.rowLeft}>
         {icon && <MaterialCommunityIcons name={icon} size={20} color="#52525b" style={{ marginRight: 12 }} />}
-        <MyText style={[styles.rowText, { color: '#18181b' }]}>{label}</MyText>
+        <MyText style={[styles.rowText, { color: dynamicText }]}>{label}</MyText>
       </View>
       {children}
     </TouchableOpacity>
@@ -61,12 +62,12 @@ export default function SettingsScreen() {
           <Typewriter 
             text="CONFIGURACION DE LA CUENTA" 
             speed={80} 
-            style={[styles.headerTitle, { color: dynamicText }]} 
+            style={[styles.headerTitle, { color: typewriter }]} 
           />
         </View>
         {/* AJUSTES DE PERFIL */}
         <View style={styles.section}>
-          <MyText style={styles.sectionLabel}>Ajustes de Perfil</MyText>
+          <MyText style={[styles.sectionLabel, {color: titles}]}>Ajustes de Perfil</MyText>
           <View style={[styles.cardContainer, { backgroundColor: cardBg }]}>
             <SettingRow label="Cambiar Nombre" onPress={() => {}} />
             <SettingRow label="Editar Bio" onPress={() => {}} />
@@ -78,7 +79,7 @@ export default function SettingsScreen() {
 
         {/* SEGURIDAD Y ACCESO */}
         <View style={styles.section}>
-          <MyText style={styles.sectionLabel}>Seguridad y Acceso</MyText>
+          <MyText style={[styles.sectionLabel, {color: titles}]}>Seguridad y Acceso</MyText>
           <View style={[styles.cardContainer, { backgroundColor: cardBg }]}>
             <SettingRow label="Cambiar Contraseña" onPress={() => {}} />
             <SettingRow label="Verificación de Dos Pasos" onPress={() => {}} />
@@ -87,25 +88,25 @@ export default function SettingsScreen() {
 
         {/* NOTIFICACIONES */}
         <View style={styles.section}>
-          <MyText style={styles.sectionLabel}>Notificaciones</MyText>
+          <MyText style={[styles.sectionLabel, {color: titles}]}>Notificaciones</MyText>
           <View style={[styles.cardContainer, { backgroundColor: cardBg }]}>
             <View style={styles.rowItem}>
               <View style={styles.rowLeft}>
-                <MyText style={styles.rowText}>Notificaciones de </MyText>
+                <MyText style={[styles.rowText, {color: dynamicText}]}>Notificaciones de </MyText>
                 <View style={[styles.tag, { backgroundColor: '#f97316' }]}><MyText style={styles.tagText}>Ensayo</MyText></View>
               </View>
               <Switch value={notifEnsayo} onValueChange={setNotifEnsayo} trackColor={{ true: '#7C3AED' }} />
             </View>
             <View style={styles.rowItem}>
               <View style={styles.rowLeft}>
-                <MyText style={styles.rowText}>Alertas de </MyText>
+                <MyText style={[styles.rowText, {color: dynamicText}]}>Alertas de </MyText>
                 <View style={[styles.tag, { backgroundColor: '#0000ff' }]}><MyText style={styles.tagText}>Función</MyText></View>
               </View>
               <Switch value={notifFuncion} onValueChange={setNotifFuncion} trackColor={{ true: '#7C3AED' }} />
             </View>
             <View style={styles.rowItem}>
               <View style={styles.rowLeft}>
-                <MyText style={styles.rowText}>Alerta de </MyText>
+                <MyText style={[styles.rowText, {color: dynamicText}]}>Alerta de </MyText>
                 <View style={[styles.tag, { backgroundColor: '#008000' }]}><MyText style={styles.tagText}>Evento</MyText></View>
               </View>
               <Switch value={notifEvento} onValueChange={setNotifEvento} trackColor={{ true: '#7C3AED' }} />
@@ -115,7 +116,7 @@ export default function SettingsScreen() {
 
         {/* TEMA */}
         <View style={styles.section}>
-          <MyText style={styles.sectionLabel}>Tema</MyText>
+          <MyText style={[styles.sectionLabel, {color: titles}]}>Tema</MyText>
           <View style={[styles.cardContainer, { backgroundColor: cardBg }]}>
             <SettingRow label="Claro" onPress={() => Appearance.setColorScheme('light')} />
             <SettingRow label="Oscuro" onPress={() => Appearance.setColorScheme('dark')} />

@@ -1,7 +1,8 @@
+import Typewriter from '@/src/components/Typewriter';
 import { supabase } from '@/src/lib/supabase';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
-import { Calendar, LocaleConfig } from 'react-native-calendars'; // 🚀 La librería Pro
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 
 // Configuración en español
 LocaleConfig.locales['es'] = {
@@ -61,10 +62,23 @@ export default function AgendaCalendarScreen() {
         setSelectedDayProjects(found);
     };
 
+    const typewriter = isDark ? '#ded1b8' : '#776837';
+    const dynamicBg = isDark ? '#121212' : '#dedede';
+    const titles = isDark ? '#cc00ff' : '#9c0000';
+
+
+
+
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#f5f5f5' }]}>
-            <Text style={[styles.title, { color: isDark ? '#fff' : '#000' }]}>CARTELERA</Text>
-            
+        <View style={[styles.container, { backgroundColor: dynamicBg }]}>
+            <View style={styles.headerWrapper}>
+                <Typewriter 
+                text="AGENDA" 
+                speed={80} 
+                style={[styles.headerTitle, { color: typewriter }]} 
+                />
+            </View>
+                            
             <Calendar
                 theme={{
                     backgroundColor: 'transparent',
@@ -82,7 +96,7 @@ export default function AgendaCalendarScreen() {
             />
 
             <ScrollView style={styles.detailsContainer}>
-                <Text style={styles.sectionLabel}>Eventos del día:</Text>
+                <Text style={[styles.sectionLabel, {color: titles}]}>Eventos del día:</Text>
                 {selectedDayProjects.length > 0 ? (
                     selectedDayProjects.map(p => (
                         <View key={p.id} style={[styles.eventCard, { borderLeftColor: p.theme_color }]}>
@@ -107,5 +121,12 @@ const styles = StyleSheet.create({
     eventCard: { padding: 15, backgroundColor: '#9e000010', borderLeftWidth: 5, borderRadius: 8, marginBottom: 10 },
     eventTitle: { fontSize: 18, fontWeight: 'bold' },
     eventSubtitle: { color: '#666', fontSize: 13 },
-    emptyText: { color: '#888', fontStyle: 'italic', marginTop: 10 }
+    emptyText: { color: '#888', fontStyle: 'italic', marginTop: 10 },
+    headerTitle: { fontSize: 28, fontWeight: 'bold', marginBottom: 15 },
+        headerWrapper: { 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        width: '100%',
+    },
+
 });

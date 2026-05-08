@@ -68,10 +68,12 @@ export default function ArchiveScreen() {
         </View>
     );
 
+    const dynamicBg = isDark ? '#121212' : '#dedede';
+
     return (
         <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#f5f5f5' }]}>
             <View style={styles.header}>
-                <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#000' }]}>BAÚL DE RECUERDOS</Text>
+                <Text style={[styles.headerTitle, { color: '#776837' }]}>BAÚL DE RECUERDOS</Text>
                 
                 {/* 🔍 BARRA DE BÚSQUEDA */}
                 <View style={[styles.searchContainer, { backgroundColor: isDark ? '#1e1e1e' : '#e4e4e7' }]}>

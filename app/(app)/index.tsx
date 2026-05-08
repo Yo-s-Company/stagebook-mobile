@@ -169,8 +169,12 @@ useEffect(() => {
     opacity: animation,
   };
 
-  const dynamicBg = isDark ? '#121212' : '#ded1b8';
+  const dynamicBg = isDark ? '#121212' : '#dedede';
   const dynamicText = isDark ? '#ded1b8' : '#18181b';
+  const titles = isDark ? '#cc00ff' : '#9c0000';
+  const typewriter = isDark ? '#ded1b8' : '#776837';
+
+
 
   return (
     <View style={{ flex: 1, backgroundColor: dynamicBg }}>
@@ -186,26 +190,31 @@ useEffect(() => {
           <Typewriter 
             text="RESUMEN DE ACTIVIDAD" 
             speed={80} 
-            style={[styles.headerTitle, { color: dynamicText }]} 
+            style={[styles.headerTitle, { color: typewriter }]}
           />
         </View>
 
 
       <View style={styles.sectionDivider}>
-  <TouchableOpacity 
-    activeOpacity={0.7} 
-    onPress={toggleProyectos}
-    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}
-  >
+      <TouchableOpacity 
+        activeOpacity={0.7} 
+        onPress={toggleProyectos}
+        style={{ 
+          flexDirection: 'row', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          paddingVertical: 5 
+        }}
+      >
 
-        <MyText style={styles.sectionTitleGreen}>
+        <MyText style={[styles.sectionTitleGreen, { marginBottom: 0, color: titles }]}>
           🟢 Proyectos en Curso ({projects.length})
         </MyText>
 
 <Ionicons 
       name={proyectosPlegados ? "chevron-down" : "chevron-up"} 
       size={22} 
-      color="#16a34a" 
+      color={titles}
     />
   </TouchableOpacity>
 
@@ -222,6 +231,7 @@ useEffect(() => {
             { 
               backgroundColor: isDark ? '#1e1e1e' : '#FFFFFF', 
               borderLeftColor: item.theme_color || '#7C3AED',
+              padding:0,
               borderLeftWidth: 6,
               marginBottom: 12
             }
@@ -258,8 +268,8 @@ useEffect(() => {
 
         {/* EVENTOS */}
         <View style={styles.eventSection}>
-          <Text style={[styles.sectionTitleNormal, { color: dynamicText }]}>
-            🎬 Últimos Eventos
+          <Text style={[styles.sectionTitleNormal, { color: titles }]}>
+            🎬 Próximos Eventos
           </Text>
 
           {MOCK_EVENTS.map((item) => (
@@ -362,7 +372,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   sectionDivider: { marginBottom: 32, borderBottomWidth: 1, borderBottomColor: '#e4e4e7', paddingBottom: 24 },
-  sectionTitleGreen: { color: '#16a34a', fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
+  sectionTitleGreen: { fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
   sectionTitleNormal: { fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
   projectCard: {
     borderRadius: 12,

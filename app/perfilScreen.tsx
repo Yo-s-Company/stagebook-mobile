@@ -95,8 +95,11 @@ export default function PerfilScreen() {
     </View>
   );
 
+  const dynamicBg = isDark ? '#121212' : '#dedede';
+
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: dynamicBg }]}>
       {/* Eliminamos el doble padding/height y dejamos solo uno limpio */}
       <View style={{ height: insets.top + 10 }} />
       

@@ -1,3 +1,4 @@
+import Typewriter from '@/src/components/Typewriter';
 import { supabase } from '@/src/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
@@ -16,9 +17,11 @@ import {
     useColorScheme,
     View
 } from 'react-native';
-import { WebView } from 'react-native-webview'; // Asegúrate de instalar esta librería
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 
 export default function LibraryScreen() {
+    const insets = useSafeAreaInsets();
     const [scripts, setScripts] = useState<any[]>([]);
     const [filteredScripts, setFilteredScripts] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -94,8 +97,11 @@ const abrirVisorInterno = async (scriptPath: string, title: string) => {
         const { data } = supabase.storage.from('project_scripts').getPublicUrl(scriptPath);
         await WebBrowser.openBrowserAsync(data.publicUrl);
     };
-  const dynamicBg = isDark ? '#121212' : '#ded1b8';
-  const dynamicText = isDark ? '#ded1b8' : '#18181b';
+  const dynamicBg = isDark ? '#121212' : '#dedede';
+  const dynamicText = isDark ? '#ded1b8' : '#000000'; 
+  const cardBg = isDark ? '#1e1e1e' : '#bebebe'; 
+  const titles = isDark ? '#cc00ff' : '#9c0000';
+  const typewriter = isDark ? '#ded1b8' : '#776837';
 
     const renderItem = ({ item }: { item: any }) => (
         <TouchableOpacity 
@@ -122,8 +128,16 @@ const abrirVisorInterno = async (scriptPath: string, title: string) => {
 
     return (
         <View style={[styles.container, { backgroundColor: dynamicBg }]}>
+            <View style={[styles.headerWrapper, { paddingTop: insets.top + 10 }]}>
+                <Typewriter 
+                text="BIBLIOTECA" 
+                speed={80} 
+                style={[styles.headerTitle, { color: typewriter }]} 
+                />
+            </View>
+
             <View style={styles.header}>
-                <Text style={[styles.headerTitle, { color: dynamicText }]}>Biblioteca</Text>
+                <Text style={[styles.headerTitle, { color: titles }]}>Tus libretos</Text>
                 <View style={[styles.searchContainer, { backgroundColor: isDark ? '#1e1e1e' : '#eee' }]}>
                     <Ionicons name="search" size={20} color="#888" />
                     <TextInput
@@ -216,5 +230,11 @@ const styles = StyleSheet.create({
     viewerTitle: { fontWeight: 'bold', fontSize: 16, textTransform: 'uppercase' },
     viewerSubtitle: { fontSize: 10, color: '#dc2626', fontWeight: 'bold' },
     loaderContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' },
-    emptyText: { textAlign: 'center', marginTop: 50, color: '#888' }
+    emptyText: { textAlign: 'center', marginTop: 50, color: '#888' },
+    headerContainer: { alignItems: 'center', marginBottom: 40, justifyContent: 'center' },
+    headerWrapper: { 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        width: '100%',
+    },
 });

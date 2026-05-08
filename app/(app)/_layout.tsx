@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import * as NavigationBar from 'expo-navigation-bar';
 import React, { ComponentProps, useEffect, useState } from 'react';
-import { StyleSheet, useColorScheme, View } from 'react-native';
+import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Header } from '@/src/components/Header';
@@ -14,14 +15,20 @@ import SettingsScreen from './settings';
 
 const Tab = createMaterialTopTabNavigator();
 
+
 function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
+  if (Platform.OS === 'android') {
+  // Solo cambiamos el estilo de los botones (blancos)
+  NavigationBar.setButtonStyleAsync('light');
+}
+
+
   return (
-    <View style={{ flex: 1, paddingBottom: insets.bottom }}>
-      {/* Componente Header independiente */}
+    <View style={{ flex: 1, backgroundColor: '#121212' }}>  
       <Header avatarUrl={avatarUrl} />
 
       <Tab.Navigator
@@ -30,13 +37,16 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
         screenOptions={({ route }) => ({
           tabBarActiveTintColor: '#f80000',
           tabBarInactiveTintColor: isDark ? '#888' : '#666',
-          tabBarIndicatorStyle: { backgroundColor: '#f80000', height: 3 },
+          tabBarIndicatorStyle: { backgroundColor: '#f80000', height: 3,   marginBottom: insets.bottom > 0 ? insets.bottom : 0, },
           tabBarStyle: {
-            backgroundColor: isDark ? '#121212' : '#FFFFFF',
-            elevation: 8,
+            backgroundColor: '#121212',
+            elevation: 0,
             shadowColor: '#000',
+            height: 65 + insets.bottom,
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
             shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
+            shadowOpacity: 0,
+            borderTopWidth: 0,
             shadowRadius: 4,
           },
           tabBarLabelStyle: {
@@ -44,6 +54,7 @@ function TabNavigator({ avatarUrl }: { avatarUrl: string | null }) {
             fontWeight: 'bold',
             textTransform: 'none',
           },
+
           tabBarIcon: ({ color }) => {
             let iconName: ComponentProps<typeof Ionicons>['name'];
             switch (route.name) {
@@ -108,48 +119,56 @@ export default function AppLayout() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
 useEffect(() => {
-  let isMounted = true; 
+  let isMounted = true;
   let channel: any;
 
   const setupAuthAndProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !isMounted) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !isMounted) return;
 
-    // 1. Obtener avatar inicial
-    const { data } = await supabase
-      .from('profiles')
-      .select('avatar_url')
-      .eq('id', user.id)
-      .single();
+      // 1. Obtener avatar inicial
+      const { data } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single();
 
-    if (data?.avatar_url && isMounted) setAvatarUrl(data.avatar_url);
+      if (data?.avatar_url && isMounted) setAvatarUrl(data.avatar_url);
 
-    // 2. Configurar y Suscribir en un solo bloque fluido
-    channel = supabase.channel(`profile_updates_${user.id}`);
+      // 2. CONFIGURACIÓN DEL CANAL
+      const channelName = `profile_updates_${user.id}`;
+      supabase.removeChannel(supabase.channel(channelName));
+
+      channel = supabase.channel(channelName);
+
       channel
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`,
-        },
-      (payload: { new: { avatar_url?: string } }) => { 
-        if (isMounted && payload.new?.avatar_url) {
-          setAvatarUrl(payload.new.avatar_url);
-        }
-      }
-    )
-      .subscribe(); 
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${user.id}`,
+          },
+          (payload: any) => {
+            if (isMounted && payload.new?.avatar_url) {
+              setAvatarUrl(payload.new.avatar_url);
+            }
+          }
+        );
+    } catch (error) {
+      console.error("Error en setupAuth:", error);
+    }
   };
 
   setupAuthAndProfile();
 
-  // 🧹 LIMPIEZA ABSOLUTA
   return () => {
     isMounted = false;
-    if (channel) supabase.removeChannel(channel);
+    if (channel) {
+      supabase.removeChannel(channel);
+    }
   };
 }, []);
 

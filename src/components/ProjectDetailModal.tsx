@@ -1,18 +1,17 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from 'react';
 import {
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import {
-    CalendarDaysIcon,
-    InformationCircleIcon,
-    XMarkIcon
+  CalendarDaysIcon,
+  InformationCircleIcon
 } from "react-native-heroicons/outline";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -38,9 +37,6 @@ export const ProjectDetailModal = ({ visible, onClose, project, isDark }: Projec
           
           {/* Cabecera Estilo Consulting */}
           <View style={[styles.detailHeader, { borderBottomColor: themeColor }]}>
-             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <XMarkIcon size={28} color={textColor} />
-             </TouchableOpacity>
              <Text style={[styles.detailTitle, { color: textColor }]} numberOfLines={1}>
                {project.title}
              </Text>
@@ -126,7 +122,7 @@ const styles = StyleSheet.create({
   },
   detailHeader: { flexDirection: 'row', alignItems: 'center', paddingBottom: 16, borderBottomWidth: 3, marginBottom: 20 },
   closeBtn: { marginRight: 12 },
-  detailTitle: { fontSize: 22, fontWeight: 'bold', flex: 1, textTransform: 'uppercase', letterSpacing: 0.5 },
+  detailTitle: { fontSize: 30, fontWeight: 'bold', flex: 1, textTransform: 'uppercase', letterSpacing: 0.5 },
   detailScroll: { paddingBottom: 30 },
   highlightSection: { padding: 20, borderRadius: 20, marginBottom: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
   label: { fontSize: 11, fontWeight: '900', letterSpacing: 1.2, marginBottom: 12, textTransform: 'uppercase' },
