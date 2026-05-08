@@ -1,6 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from 'react';
 import {
+  Alert,
   Dimensions,
   Modal,
   ScrollView,
@@ -13,6 +15,7 @@ import {
   CalendarDaysIcon,
   InformationCircleIcon
 } from "react-native-heroicons/outline";
+import { supabase } from "../lib/supabase";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -29,6 +32,42 @@ export const ProjectDetailModal = ({ visible, onClose, project, isDark }: Projec
   const themeColor = project.theme_color || '#7C3AED';
   const textColor = isDark ? '#ded1b8' : '#18181b';
   const bgColor = isDark ? '#1e1e1e' : '#FFFFFF';
+
+  // --- LÓGICA DE ELIMINACIÓN ---
+  const handleEliminar = () => {
+    Alert.alert(
+      "Eliminar Producción",
+      `¿Estás seguro de que quieres borrar "${project.title}"? Esta acción no se puede deshacer.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "ELIMINAR", 
+          style: "destructive", 
+          onPress: async () => {
+            const { error } = await supabase
+              .from('projects')
+              .delete()
+              .eq('id', project.id);
+            
+            if (error) {
+              Alert.alert("Error", "No se pudo eliminar la producción.");
+            } else {
+              onClose(); // Cerrar modal tras eliminar
+              // Aquí podrías disparar un refresh de la lista
+            }
+          } 
+        }
+      ]
+    );
+  };
+
+const handleEditar = () => {
+  onClose();
+  router.push({
+    pathname: "/new-project", 
+    params: { editingId: project.id }
+  });
+};
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
@@ -92,7 +131,28 @@ export const ProjectDetailModal = ({ visible, onClose, project, isDark }: Projec
                 {project.description || "Sin descripción disponible para este proyecto activo."}
               </Text>
             </View>
+        {/* --- NUEVA SECCIÓN DE ACCIONES --- */}
+            <View style={styles.actionSection}>
+                <Text style={[styles.label, { color: themeColor }]}>Gestión de Producción</Text>
+                
+                <View style={styles.actionButtonsRow}>
+                    <TouchableOpacity 
+                        style={[styles.btnAction, { borderColor: themeColor }]} 
+                        onPress={handleEditar}
+                    >
+                        <MaterialCommunityIcons name="pencil-outline" size={20} color={textColor} />
+                        <Text style={[styles.btnText, { color: textColor }]}>EDITAR</Text>
+                    </TouchableOpacity>
 
+                    <TouchableOpacity 
+                        style={[styles.btnAction, { borderColor: '#ef4444' }]} 
+                        onPress={handleEliminar}
+                    >
+                        <MaterialCommunityIcons name="trash-can-outline" size={20} color="#ef4444" />
+                        <Text style={[styles.btnText, { color: '#ef4444' }]}>BORRAR</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
           </ScrollView>
 
           <TouchableOpacity 
@@ -138,4 +198,30 @@ const styles = StyleSheet.create({
   descriptionText: { fontSize: 15, lineHeight: 24, opacity: 0.85 },
   primaryActionBtn: { paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginTop: 'auto' },
   primaryActionText: { color: '#fff', fontWeight: '800', fontSize: 16, textTransform: 'uppercase' },
+  actionSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(128,128,128,0.2)',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  btnAction: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  btnText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    letterSpacing: 1,
+  },
 });

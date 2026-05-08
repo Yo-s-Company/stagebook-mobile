@@ -4,8 +4,8 @@ import { ProductionModal } from "@/src/components/ProductionModal";
 import Typewriter from "@/src/components/Typewriter";
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     ScrollView,
@@ -20,6 +20,7 @@ import { getStyles } from "./(app)/project/newStyles";
 import { useProjectForm } from './(app)/project/useProjectForm';
 
 export default function NuevoProyectoPage() {
+    const { editingId } = useLocalSearchParams();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const scheme = useColorScheme();
@@ -35,8 +36,16 @@ export default function NuevoProyectoPage() {
         agregarPersonajeALista, eliminarPersonaje,
         toggleDia, agregarMiembroEquipo, resetForm, pickDocument,
         setBusquedaActores,busquedaActores, buscando, buscarActorEnBaseDeDatos,
-        guardarProyectoEnBaseDeDatos
-    } = useProjectForm();
+        guardarProyectoEnBaseDeDatos, cargarDatosParaEditar
+    } = useProjectForm(editingId as string);
+
+    
+        useEffect(() => {
+        if (editingId) {
+            cargarDatosParaEditar(editingId as string);
+        }
+    }, [editingId]);
+
 
 
     //Fecha
@@ -109,11 +118,12 @@ const onDateChange = (event: any, selectedDate?: Date) => {
     const [seccionAbierta, setSeccionAbierta] = useState<number | null>(0);
 
     // Colores dinámicos 
-    const dynamicBg = isDark ? '#121212' : '#ded1b8';
-    const dynamicText = isDark ? '#ded1b8' : '#18181b';
     const cardBg = isDark ? '#1e1e1e' : '#FFFFFF';
     const secondaryText = isDark ? '#a1a1aa' : '#52525b';
     const borderCol = isDark ? '#27272a' : '#e4e4e7';
+    const dynamicBg = isDark ? '#121212' : '#dedede';
+    const dynamicText = isDark ? '#ded1b8' : '#18181b';
+    const typewriter = isDark ? '#ded1b8' : '#776837';
 
     // Genera los estilos pasando las variables
     const styles = getStyles(isDark, dynamicBg, dynamicText, borderCol, cardBg, secondaryText);
@@ -154,9 +164,10 @@ const cancelarProduccion = () => {
                 onPress: () => {
                     // Resetear datos base (Tabla: projects)
                     setFormData({
+                        id: null,
                         title: '',
                         description: '',
-                        script_url: null,
+                        script_url: '',
                         start_date: '',
                         theme_color: '#7C3AED',
                         status: 'Activo',
@@ -184,12 +195,38 @@ const cancelarProduccion = () => {
     );
 };
 
+const handleGuardar = async () => {
+        // VALIDACIONES
+        if (!formData.title.trim()) return Alert.alert("Faltan datos", "El nombre es obligatorio.");
+        if (!formData.start_date || !formData.end_date) {
+            return Alert.alert("Fechas incompletas", "Define estreno y clausura.");
+        }
+
+        setIsSaving(true);
+        // ✅ 3. LLAMADA SIN ARGUMENTOS: El hook ya tiene el estado interno
+        const resultado = await guardarProyectoEnBaseDeDatos();
+        setIsSaving(false);
+
+        if (resultado.success) {
+            Alert.alert(
+                formData.id ? "¡Producción Actualizada!" : "¡Arriba el telón!",
+                formData.id ? "Los cambios se guardaron correctamente." : "¡Proyecto creado exitosamente!",
+                [{ text: "OK", onPress: () => {
+                    resetForm();
+                    router.replace('/(app)');
+                }}]
+            );
+        }
+    };
+
+
+
     return (
         <View style={{ flex: 1, backgroundColor: dynamicBg, paddingTop: insets.top }}>
             <ScrollView contentContainerStyle={[styles.scrollContainer, { paddingTop: 24 }]}>
                 
                 <View style={styles.headerContainer}>
-                    <Typewriter text="SE LEVANTA EL TELÓN" speed={80} style={[styles.headerTitle, { color: dynamicText }]} />
+                    <Typewriter text="SE LEVANTA EL TELÓN" speed={80} style={[styles.headerTitle, { color: typewriter }]} />
                 </View>
 
                 {/* SECCIÓN 1: IDENTIDAD */}
@@ -408,7 +445,7 @@ const cancelarProduccion = () => {
                             };
 
                             // 3. LLAMADA A BASE DE DATOS
-                            const resultado = await guardarProyectoEnBaseDeDatos(proyectoAEnviar);
+                            const resultado = await guardarProyectoEnBaseDeDatos();
                             
                             // 4. APAGAR OVERLAY INDEPENDIENTEMENTE DEL RESULTADO
                             setIsSaving(false); 
@@ -436,7 +473,11 @@ const cancelarProduccion = () => {
                             }
                         }}
                     >
-                        <Text style={styles.primaryBtnText}>LANZAR PROYECTO</Text>
+                <TouchableOpacity onPress={guardarProyectoEnBaseDeDatos}>
+                <Text>
+                    {formData.id ? "GUARDAR CAMBIOS" : "LANZAR PROYECTO"}
+                </Text>
+                </TouchableOpacity>
                     </TouchableOpacity>
                     {/* Botón de Reinicio / Cancelar */}
                     <TouchableOpacity 

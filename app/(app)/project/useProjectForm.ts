@@ -24,10 +24,10 @@ interface MiembroEquipo {
     assigned_profile_id?: string | null;
 }
 
-
-
-export const useProjectForm = () => {
+    
+export const useProjectForm = (initialProjectId?: string) => {
     const [formData, setFormData] = useState({
+        id: initialProjectId || null, // ✅ Usamos 'id' consistentemente
         title: '',
         description: '',
         start_date: '',
@@ -40,8 +40,102 @@ export const useProjectForm = () => {
         equipo_produccion: [] as MiembroEquipo[],
     });
 
-    // Guardamos el asset completo del archivo para la subida posterior
     const [archivoFisico, setArchivoFisico] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+
+    // 1. Cargar datos para edición
+    const cargarDatosParaEditar = async (id: string) => {
+        const { data, error } = await supabase
+            .from('projects')
+            .select('*, project_characters(*)')
+            .eq('id', id)
+            .single();
+
+        if (data && !error) {
+            setFormData({
+                ...data,
+                personajes: data.project_characters || [],
+                equipo_produccion: [], // Cargar si tienes tabla de equipo
+            });
+        }
+    };
+
+    // 2. Guardar (Híbrido: Insert o Update)
+    const guardarProyectoEnBaseDeDatos = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Debes estar logueado.");
+
+            const esEdicion = !!formData.id;
+            let projectId = formData.id;
+
+            const payload = {
+                title: formData.title,
+                description: formData.description,
+                start_date: formData.start_date,
+                end_date: formData.end_date,
+                dias_funcion: formData.dias_funcion,
+                theme_color: formData.theme_color,
+                status: formData.status,
+                founder_id: user.id,
+            };
+
+            if (esEdicion) {
+                // ✅ ACTUALIZAR
+                const { error } = await supabase
+                    .from('projects')
+                    .update(payload)
+                    .eq('id', projectId);
+                if (error) throw error;
+            } else {
+                // ✅ INSERTAR
+                const { data, error } = await supabase
+                    .from('projects')
+                    .insert([payload])
+                    .select()
+                    .single();
+                if (error) throw error;
+                projectId = data.id;
+            }
+
+            // 3. Manejo de Archivo (Script)
+            if (archivoFisico && projectId) {
+                const filePath = `${projectId}/${archivoFisico.name}`;
+                const response = await fetch(archivoFisico.uri);
+                const arrayBuffer = await response.arrayBuffer();
+
+                const { error: uploadError } = await supabase.storage
+                    .from('project_scripts')
+                    .upload(filePath, arrayBuffer, {
+                        contentType: archivoFisico.mimeType || 'application/pdf',
+                        upsert: true
+                    });
+
+                if (!uploadError) {
+                    await supabase.from('projects').update({ script_url: filePath }).eq('id', projectId);
+                }
+            }
+
+            // 4. Sincronizar Personajes (Borrar y Re-insertar es lo más seguro en edición simple)
+            if (projectId) {
+                await supabase.from('project_characters').delete().eq('project_id', projectId);
+                
+                if (formData.personajes.length > 0) {
+                    const personajesParaInsertar = formData.personajes.map((p: any) => ({
+                        project_id: projectId,
+                        character_name: p.character_name,
+                        description: p.description || '',
+                        assigned_profile_id: p.assigned_profile_id || null,
+                    }));
+                    await supabase.from('project_characters').insert(personajesParaInsertar);
+                }
+            }
+
+            return { success: true, projectId };
+        } catch (error: any) {
+            Alert.alert("Error", error.message);
+            return { success: false };
+        }
+    };
 
     const pickDocument = async () => {
         try {
@@ -63,102 +157,6 @@ export const useProjectForm = () => {
             }
         } catch (err) {
             console.error("Error al seleccionar documento:", err);
-        }
-    };
-
-    const guardarProyectoEnBaseDeDatos = async (datosFinales?: any) => {
-        try {
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
-            if (authError || !user) {
-                Alert.alert("Error de sesión", "Debes estar logueado.");
-                return { success: false };
-            }
-
-            const dataParaGuardar = datosFinales || formData;
-
-            // 1. Insertar el Proyecto primero para obtener su ID
-            const { data: proyectoCreado, error: errorProyecto } = await supabase
-                .from('projects')
-                .insert({
-                    title: dataParaGuardar.title,
-                    description: dataParaGuardar.description,
-                    start_date: dataParaGuardar.start_date,
-                    end_date: dataParaGuardar.end_date,
-                    dias_funcion: dataParaGuardar.dias_funcion,
-                    theme_color: dataParaGuardar.theme_color,
-                    status: dataParaGuardar.status,
-                    founder_id: user.id,
-                })
-                .select()
-                .single();
-
-            if (errorProyecto) throw errorProyecto;
-            const projectId = proyectoCreado.id;
-
-            // 2. Subir el libreto si existe
-            if (archivoFisico) {
-                const filePath = `${projectId}/${archivoFisico.name}`;
-            try{
-                const response = await fetch(archivoFisico.uri);
-                const arrayBuffer = await response.arrayBuffer();
-
-                // 2. Subir el buffer directamente
-                const { error: uploadError } = await supabase.storage
-                    .from('project_scripts')
-                    .upload(filePath, arrayBuffer, {
-                    contentType: archivoFisico.name.endsWith('.docx') 
-                        ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
-                        : (archivoFisico.mimeType || 'application/pdf'),
-                    upsert: true,
-                    cacheControl: '3600'
-                    });
-
-                if (!uploadError) {
-                    const {error: updateError} =await supabase
-                        .from('projects')
-                        .update({ script_url: filePath })
-                        .eq('id', projectId);
-
-                    if (updateError) throw updateError;
-                } else {
-                    throw uploadError;
-                }
-            } catch (uploadError: any){
-                console.error("Error crítico en la subida:", uploadError);
-            }
-        }
-
-            // 4. Insertar Personajes
-            if (dataParaGuardar.personajes.length > 0) {
-                const personajesParaInsertar = dataParaGuardar.personajes.map((p: any) => ({
-                    project_id: projectId,
-                    character_name: p.character_name,
-                    description: p.description || '',
-                    image_ref_url: p.image_ref_url || null,
-                    video_ref_url: p.video_ref_url || null,
-                    assigned_profile_id: p.assigned_profile_id || null,
-                }));
-                const { error: errorChars } = await supabase.from('project_characters').insert(personajesParaInsertar);
-                if (errorChars) throw errorChars;
-            }
-
-            // 5. Enviar Invitaciones al equipo
-            if (dataParaGuardar.equipo_produccion.length > 0) {
-                const invitaciones = dataParaGuardar.equipo_produccion.map((m: any) => ({
-                    project_id: projectId,
-                    receiver_id: m.assigned_profile_id,
-                    role: m.role,
-                    status: 'pending'
-                }));
-                const { error: errorInvs } = await supabase.from('project_invitations').insert(invitaciones);
-                if (errorInvs) throw errorInvs;
-            }
-
-            return { success: true, projectId };
-        } catch (error: any) {
-            console.error("Error al crear proyecto:", error);
-            Alert.alert("Error", error.message);
-            return { success: false };
         }
     };
 
@@ -272,6 +270,7 @@ const asignarDirectorComoActor = async () => {
     // 4. Función Reiniciar (Cancelar Producción)
     const resetForm = () => {
         setFormData({
+            id: '',
             title: '',
             description: '',
             script_url: '',
@@ -303,6 +302,7 @@ const asignarDirectorComoActor = async () => {
         buscarActorEnBaseDeDatos,
         setBusquedaActores,
         guardarProyectoEnBaseDeDatos,
+        cargarDatosParaEditar
         
     };
 };
